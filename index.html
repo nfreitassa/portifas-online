@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfólio Interativo</title>
+    <style>
+        /* --- Global Styles --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden; /* Prevent scrollbars on main page due to floating texts */
+            font-family: 'Arial Narrow', Arial, sans-serif; /* Default fallback */
+            background-color: #e2e2e2;
+            color: var(--text-main);
+        }
+
+        /* --- Typography --- */
+        .font-nav {
+            font-family: 'Arial Narrow Bold Italic', 'Arial Narrow', Arial, sans-serif;
+            font-weight: bold;
+            font-style: italic;
+        }
+
+        .font-artistic {
+            font-family: 'Vatican Rough Letters, 8th c. Regular', cursive, fantasy;
+        }
+
+        /* --- Accent Color --- */
+        :root {
+            --accent-color: #B412FF;
+            --accent-color-darker: #9d4edd;
+            --text-main: #222222;
+            --text-light: #e2e2e2; /* Light color for contrast on dark backgrounds */
+            --bg-main: #e2e2e2;
+            --bg-overlay: rgba(30, 30, 30, 0.92);
+            --bg-overlay-blur: blur(5px);
+        }
+
+        /* --- Buttons --- */
+        .btn {
+            padding: 8px 15px;
+            border: 1px solid var(--accent-color);
+            background-color: transparent;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            font-family: 'Arial Narrow', Arial, sans-serif;
+            font-weight: bold;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .btn:hover {
+            background-color: var(--accent-color);
+            color: var(--text-main); /* MODIFICATION: Kept original color for consistency, can be var(--text-light) if needed for contrast */
+            transform: scale(1.05);
+        }
+        .btn:active {
+            transform: scale(0.98);
+            background-color: var(--accent-color-darker);
+        }
+        .btn-subtle {
+            padding: 5px 10px;
+            border: 1px solid #aaa;
+            color: var(--text-main);
+            font-size: 0.8em;
+        }
+        .btn-subtle:hover {
+            border-color: var(--accent-color);
+            color: var(--text-main); /* MODIFICATION: Kept original color */
+            background-color: rgba(180, 18, 255, 0.1);
+        }
+
+        /* --- Main Page --- */
+        #main-page {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            text-align: center;
+            position: relative; /* For floating texts and sou-fa-link */
+            transition: opacity 0.5s ease-in-out;
+        }
+        #main-page.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #central-icon {
+            max-width: 165px; /* MODIFIED: Increased size */
+            cursor: pointer;
+            transition: transform 0.3s ease, filter 0.3s ease;
+            margin-bottom: 30px;
+        }
+        #central-icon:hover {
+            transform: scale(1.05);
+            filter: brightness(1.1);
+        }
+
+        #year-navigation { /* sou-fa-link has its own positioning now */
+            margin-top: 20px;
+        }
+        #year-navigation span, #sou-fa-link span { /* Common span styling */
+            margin: 0 10px;
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: color 0.2s, text-decoration 0.2s;
+            color: var(--text-main);
+        }
+        #year-navigation span:hover, #sou-fa-link span:hover {
+            color: var(--text-main);
+            text-decoration: underline;
+        }
+        
+        #sou-fa-link { /* MODIFIED: Positioned at bottom center */
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            /* margin-top: 20px; /* Removed as it's now absolutely positioned */
+        }
+
+
+        /* --- Floating Texts --- */
+        .floating-text {
+            position: absolute;
+            font-size: clamp(3em, 8vw, 7em);
+            color: var(--text-main);
+            pointer-events: none;
+            will-change: transform, opacity;
+        }
+
+        /* --- Overlays (Settings, Lightbox) --- */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-overlay);
+            backdrop-filter: var(--bg-overlay-blur);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            z-index: 1000;
+        }
+        .overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .overlay-content {
+            background-color: rgba(230, 230, 230, 0.97);
+            color: var(--text-main);
+            padding: 25px;
+            border-radius: 8px;
+            max-width: 90vw;
+            width: 700px;
+            max-height: 85vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.3);
+        }
+        .overlay-close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 2em;
+            color: var(--text-main);
+            cursor: pointer;
+            line-height: 1;
+        }
+        .overlay-close-btn:hover {
+            color: var(--text-main); /* MODIFICATION: Kept original color */
+        }
+        .overlay-title {
+            font-size: clamp(1.6em, 4vw, 2em);
+            color: var(--text-main);
+            margin-bottom: 20px;
+            text-align: center;
+            font-family: 'Arial Narrow Bold Italic', 'Arial Narrow', Arial, sans-serif;
+            font-weight: bold;
+            font-style: italic;
+        }
+
+        /* --- Settings Panel Specifics & Accordion --- */
+        .settings-section {
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .settings-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 5px 12px 0;
+            cursor: pointer;
+            border-bottom: 1px solid #ddd;
+            transition: background-color 0.2s ease;
+        }
+        .settings-panel-header:hover {
+            background-color: rgba(0,0,0,0.03);
+        }
+        .settings-panel-header h3 {
+            margin-bottom: 0;
+            font-size: 1.2em;
+            color: var(--text-main);
+            font-family: 'Arial Narrow Bold Italic', 'Arial Narrow', Arial, sans-serif;
+            font-weight: bold;
+            font-style: italic;
+        }
+        .settings-panel-toggle-icon {
+            font-size: 1.2em;
+            transition: transform 0.3s ease-in-out;
+            margin-left: 10px;
+            color: var(--text-main);
+        }
+        .settings-panel-toggle-icon.open {
+            transform: rotate(90deg);
+        }
+        .settings-panel-content {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height 0.4s ease-in-out, opacity 0.3s ease-in-out, padding-top 0.4s ease-in-out, padding-bottom 0.4s ease-in-out;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+        .settings-panel-content.open {
+            opacity: 1;
+            padding-top: 15px;
+            padding-bottom: 15px;
+        }
+        .settings-panel-content .add-images-btn {
+            margin-bottom: 15px;
+        }
+
+        .settings-image-list {
+            margin-top: 10px;
+        }
+        .settings-image-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: rgba(0,0,0,0.03);
+            border-radius: 4px;
+        }
+        .settings-image-item img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border: 1px solid #ccc;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        .settings-image-item .metadata-fields {
+            flex-grow: 1;
+        }
+        .settings-image-item .file-path {
+            font-size: 0.75em;
+            color: var(--text-main);
+            opacity: 0.7;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+        .settings-image-item label {
+            display: block;
+            font-size: 0.8em;
+            color: var(--text-main);
+            margin-bottom: 2px;
+            font-family: 'Arial Narrow', Arial, sans-serif;
+            font-style: italic;
+        }
+        .settings-image-item input[type="text"],
+        .settings-image-item input[type="number"] {
+            width: calc(100% - 10px);
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
+
+        /* --- Gallery View --- */
+        #gallery-view {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: var(--bg-main);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease-in-out, visibility 0.5s ease-in-out;
+            z-index: 500;
+        }
+        #gallery-view.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .gallery-header {
+            padding: 15px 20px;
+            background-color: rgba(255,255,255,0.8);
+            backdrop-filter: blur(3px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #ddd;
+            flex-shrink: 0;
+            position: sticky;
+            top: 0;
+            z-index: 501;
+        }
+        .gallery-title {
+            font-size: 1.8em;
+            color: var(--text-main);
+            font-family: 'Arial Narrow Bold Italic', 'Arial Narrow', Arial, sans-serif;
+            font-weight: bold;
+            font-style: italic;
+        }
+        /* .gallery-title.clickable { cursor: pointer; } REMOVED - Title no longer directly clickable for layout */
+        /* .gallery-title .layout-icon { ... } REMOVED - Icon span removed from HTML */
+
+
+        .gallery-images-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 20px;
+            position: relative;
+        }
+
+        .gallery-image-wrapper {
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            display: inline-block;
+        }
+        .gallery-image-wrapper.loaded {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .gallery-image-wrapper img {
+            display: block;
+            border: 3px solid white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .gallery-image-wrapper img:hover {
+            transform: scale(1.03);
+            box-shadow: 0 0 15px rgba(0,0,0,0.4);
+        }
+
+        .gallery-images-container.baguncado .gallery-image-wrapper {
+            position: absolute;
+            max-width: 200px;
+            max-height: 200px;
+        }
+        .gallery-images-container.baguncado .gallery-image-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .gallery-images-container.baguncado .gallery-image-wrapper.dragging {
+            cursor: grabbing;
+            z-index: 100 !important;
+        }
+
+        .gallery-images-container.organizado {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+        .gallery-images-container.organizado .gallery-image-wrapper {
+            width: 180px;
+            height: 220px;
+        }
+        .gallery-images-container.organizado .gallery-image-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* --- Lightbox Specifics --- */
+        #lightbox .overlay-content {
+            width: auto;
+            max-width: 90vw;
+            background-color: transparent;
+            box-shadow: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #lightbox-image {
+            display: block;
+            max-width: 85vw;
+            max-height: 75vh;
+            object-fit: contain;
+            border: 4px solid var(--accent-color);
+            background-color: #111;
+            margin-bottom: 15px;
+        }
+        #lightbox-metadata {
+            background-color: rgba(40,40,40,0.9);
+            color: var(--text-light); /* MODIFIED: Light text for legibility on dark background */
+            padding: 15px 20px;
+            border-radius: 5px;
+            max-width: 600px;
+            width: auto;
+            font-size: 0.9em;
+            font-family: 'Arial Narrow', Arial, sans-serif;
+        }
+        #lightbox-metadata p {
+            margin-bottom: 8px;
+            color: var(--text-light); /* MODIFIED: Ensure p tags also get light text */
+        }
+        #lightbox-metadata p strong {
+            color: var(--text-light); /* MODIFIED: Strong text also light for legibility */
+            /* font-weight will make it bold, color is now light. */
+        }
+        #lightbox-metadata .no-info {
+            font-style: italic;
+            color: var(--text-light); /* MODIFIED: Light text for no-info */
+            opacity: 0.8; /* Adjusted opacity slightly for light text */
+        }
+
+        /* Utility */
+        .hidden {
+            display: none !important;
+        }
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Main Page -->
+    <div id="main-page">
+        <img src="icone.png" alt="Ícone Central" id="central-icon">
+        <div id="year-navigation" class="font-nav">
+            <!-- Year links will be populated by JS -->
+        </div>
+        <div id="sou-fa-link" class="font-nav">
+            <span>sou fã</span>
+        </div>
+        <!-- Floating texts will be added by JS -->
+    </div>
+
+    <!-- Settings Overlay -->
+    <div id="settings-overlay" class="overlay">
+        <div class="overlay-content">
+            <button class="overlay-close-btn" data-target-overlay="settings-overlay">&times;</button>
+            <h2 class="overlay-title">Configurações do Portfólio</h2>
+            <div id="settings-sections-container">
+                <!-- Sections for years and inspirations will be populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Gallery View -->
+    <div id="gallery-view">
+        <div class="gallery-header">
+            <h2 id="gallery-title-text" class="gallery-title"></h2>
+            <!-- MODIFICATION START: Group for action buttons -->
+            <div id="gallery-action-buttons-group" style="display: flex; align-items: center; gap: 10px;">
+                 <button id="organize-btn" class="btn btn-subtle hidden">Organizar</button>
+                 <button id="disorganize-btn" class="btn btn-subtle hidden">Bagunçar</button>
+                 <button id="ilhas-arara-btn" class="btn btn-subtle hidden">Ilhas da Arara</button>
+                 <button id="espelho-estranho-btn" class="btn btn-subtle hidden">Espelho Estranho</button>
+                 <button id="gallery-back-btn" class="btn btn-subtle">Voltar</button>
+            </div>
+            <!-- MODIFICATION END -->
+        </div>
+        <div id="gallery-images-container" class="gallery-images-container">
+            <!-- Images will be populated by JS -->
+        </div>
+    </div>
+
+    <!-- Lightbox Overlay -->
+    <div id="lightbox" class="overlay">
+        <div class="overlay-content">
+            <button class="overlay-close-btn" data-target-overlay="lightbox">&times;</button>
+            <img id="lightbox-image" src="" alt="Imagem Ampliada">
+            <div id="lightbox-metadata"></div>
+        </div>
+    </div>
+
+    <!-- File input for webkitdirectory (hidden) -->
+    <input type="file" id="folder-input" webkitdirectory directory multiple class="visually-hidden">
+
+    <script>
+    // --- Self-Contained JavaScript ---
+    (function() {
+        'use strict';
+
+        // --- State & Config ---
+        const LS_PREFIX = 'interactive_portfolio_';
+        const LS_KEYS = {
+            IMAGE_PATHS: LS_PREFIX + 'image_paths',
+            METADATA_PREFIX: LS_PREFIX + 'meta_',
+            AUTORAL_ORDER_PREFIX: LS_PREFIX + 'order_autoral_'
+        };
+        const AUTORAL_YEARS = ["2010-2019", "2020", "2021", "2022", "2023", "2024", "2025"];
+        const FLOATING_TEXTS_CONFIG = [
+            { text: "nicholinhas", initialX: 0.1, initialY: 0.2, id: "ft-nicholinhas" },
+            { text: "portifas", initialX: 0.7, initialY: 0.8, id: "ft-portifas" }
+        ];
+        // MODIFICATION: Add VALID_HASHES for password protection
+        const VALID_HASHES = [
+            '3ab152d01c549e33686725002de3e5547d8c25130be7f9eef3941cc4b038557b', // senha: band sonho niver
+            'd5c45c80a34234930f6c3a1d0da148c72113eb1abadc3410da20e4ae0dd9e208'  // senha: apelido sophia niver mamis
+        ];
+
+        let imagePaths = { autoral: {}, inspiracoes: [] };
+        let currentGalleryType = null;
+        let currentGalleryKey = null;
+        let currentAutoralLayout = 'baguncado';
+        let highestZIndex = 10;
+        let floatingTextElements = [];
+
+
+        // --- DOM Elements ---
+        const DOM = {
+            mainPage: document.getElementById('main-page'),
+            centralIcon: document.getElementById('central-icon'),
+            yearNavigation: document.getElementById('year-navigation'),
+            souFaLink: document.getElementById('sou-fa-link'),
+            
+            settingsOverlay: document.getElementById('settings-overlay'),
+            settingsSectionsContainer: document.getElementById('settings-sections-container'),
+            
+            galleryView: document.getElementById('gallery-view'),
+            galleryHeader: document.querySelector('.gallery-header'),
+            galleryTitleText: document.getElementById('gallery-title-text'),
+            galleryBackBtn: document.getElementById('gallery-back-btn'), // Still useful for its own event
+            galleryImagesContainer: document.getElementById('gallery-images-container'),
+
+            // MODIFICATION START: Add new buttons to DOM object
+            galleryActionButtonsGroup: document.getElementById('gallery-action-buttons-group'),
+            organizeBtn: document.getElementById('organize-btn'),
+            disorganizeBtn: document.getElementById('disorganize-btn'),
+            ilhasAraraBtn: document.getElementById('ilhas-arara-btn'),
+            espelhoEstranhoBtn: document.getElementById('espelho-estranho-btn'),
+            // MODIFICATION END
+
+            lightbox: document.getElementById('lightbox'),
+            lightboxImage: document.getElementById('lightbox-image'),
+            lightboxMetadata: document.getElementById('lightbox-metadata'),
+
+            folderInput: document.getElementById('folder-input'),
+        };
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDataFromLocalStorage();
+            initMainPage();
+            initFloatingTexts();
+            setupEventListeners();
+            console.log("Portfólio Interativo Inicializado.");
+        });
+
+        // --- LocalStorage ---
+        function loadDataFromLocalStorage() {
+            const storedPaths = localStorage.getItem(LS_KEYS.IMAGE_PATHS);
+            if (storedPaths) {
+                try {
+                    imagePaths = JSON.parse(storedPaths);
+                    AUTORAL_YEARS.forEach(year => {
+                        if (!imagePaths.autoral[year]) imagePaths.autoral[year] = [];
+                    });
+                    if (!imagePaths.inspiracoes) imagePaths.inspiracoes = [];
+                } catch (e) {
+                    console.error("Erro ao carregar caminhos do localStorage:", e);
+                    resetImagePaths();
+                }
+            } else {
+                resetImagePaths();
+            }
+        }
+        
+        function resetImagePaths() {
+            imagePaths = { autoral: {}, inspiracoes: [] };
+            AUTORAL_YEARS.forEach(year => imagePaths.autoral[year] = []);
+        }
+
+        function saveImagePathsToLocalStorage() {
+            localStorage.setItem(LS_KEYS.IMAGE_PATHS, JSON.stringify(imagePaths));
+        }
+
+        function getMetadataKey(filePath) {
+            return LS_KEYS.METADATA_PREFIX + filePath.replace(/\//g, '_');
+        }
+
+        function getMetadata(filePath) {
+            const storedMeta = localStorage.getItem(getMetadataKey(filePath));
+            return storedMeta ? JSON.parse(storedMeta) : { nome: '', artista: '', tecnica: '', anoObra: '', ordem: '' };
+        }
+
+        function saveMetadata(filePath, data) {
+            localStorage.setItem(getMetadataKey(filePath), JSON.stringify(data));
+        }
+        
+        function getAutoralOrderKey(year) {
+            return LS_KEYS.AUTORAL_ORDER_PREFIX + year;
+        }
+
+        function getAutoralOrder(year) {
+            const storedOrder = localStorage.getItem(getAutoralOrderKey(year));
+            return storedOrder ? JSON.parse(storedOrder) : (imagePaths.autoral[year] || []);
+        }
+
+        function saveAutoralOrder(year, orderedPaths) {
+            localStorage.setItem(getAutoralOrderKey(year), JSON.stringify(orderedPaths));
+        }
+
+
+        // --- Main Page ---
+        function initMainPage() {
+            DOM.yearNavigation.innerHTML = '';
+            AUTORAL_YEARS.forEach(year => {
+                const span = document.createElement('span');
+                span.textContent = year;
+                span.dataset.year = year;
+                span.addEventListener('click', () => openGallery('autoral', year));
+                DOM.yearNavigation.appendChild(span);
+            });
+            DOM.mainPage.classList.remove('hidden');
+            DOM.galleryView.classList.remove('visible');
+        }
+
+        // --- Floating Texts ---
+        function initFloatingTexts() {
+            FLOATING_TEXTS_CONFIG.forEach(config => {
+                const el = document.createElement('div');
+                el.id = config.id;
+                el.className = 'floating-text font-artistic';
+                el.textContent = config.text;
+                DOM.mainPage.appendChild(el);
+
+                floatingTextElements.push({
+                    el: el,
+                    x: window.innerWidth * config.initialX,
+                    y: window.innerHeight * config.initialY,
+                    vx: (Math.random() - 0.8) * 2, 
+                    vy: (Math.random() - 0.8) * 2, 
+                    width: 0,
+                    height: 0,
+                    rotation: (Math.random() - 0.5) * 20,
+                    skewX: 0,
+                    skewY: 0,
+                    scale: 1,
+                    pulseCounter: Math.random() * Math.PI * 2,
+                    baseOpacity: 0.75,
+                });
+            });
+            requestAnimationFrame(() => {
+                floatingTextElements.forEach(ft => {
+                    const rect = ft.el.getBoundingClientRect();
+                    ft.width = rect.width;
+                    ft.height = rect.height;
+                });
+                animateFloatingTexts();
+            });
+        }
+
+        function animateFloatingTexts() {
+            floatingTextElements.forEach(ft => {
+                ft.x += ft.vx;
+                ft.y += ft.vy;
+
+                ft.pulseCounter += 0.025;
+                ft.scale = 1.0 + Math.sin(ft.pulseCounter) * 0.05;
+                ft.baseOpacity = 0.65 + Math.sin(ft.pulseCounter * 0.77 + Math.PI / 2) * 0.15; 
+
+                ft.rotation += ft.vx * 0.03 + ft.vy * 0.005;
+                ft.skewX = ft.vy * 0.15;
+                ft.skewY = ft.vx * -0.15;
+
+                let edgeFadeFactor = 1.0;
+                const margin = ft.width * 0.3 > 50 ? ft.width * 0.3 : 50;
+
+                if (ft.x + ft.width > window.innerWidth) {
+                    ft.x = window.innerWidth - ft.width;
+                    ft.vx *= -1;
+                } else if (ft.x < 0) {
+                    ft.x = 0;
+                    ft.vx *= -1;
+                }
+                if (ft.x + ft.width > window.innerWidth - margin) {
+                    edgeFadeFactor = Math.min(edgeFadeFactor, Math.max(0, (window.innerWidth - (ft.x + ft.width)) / margin));
+                } else if (ft.x < margin) {
+                    edgeFadeFactor = Math.min(edgeFadeFactor, Math.max(0, ft.x / margin));
+                }
+
+                if (ft.y + ft.height > window.innerHeight) {
+                    ft.y = window.innerHeight - ft.height;
+                    ft.vy *= -1;
+                } else if (ft.y < 0) {
+                    ft.y = 0;
+                    ft.vy *= -1;
+                }
+                if (ft.y + ft.height > window.innerHeight - margin) {
+                     edgeFadeFactor = Math.min(edgeFadeFactor, Math.max(0, (window.innerHeight - (ft.y + ft.height)) / margin));
+                } else if (ft.y < margin) {
+                    edgeFadeFactor = Math.min(edgeFadeFactor, Math.max(0, ft.y / margin));
+                }
+                
+                const finalOpacity = ft.baseOpacity * edgeFadeFactor;
+                ft.el.style.opacity = Math.max(0, Math.min(1, finalOpacity));
+                ft.el.style.transform = `translate(${ft.x.toFixed(2)}px, ${ft.y.toFixed(2)}px) rotate(${ft.rotation.toFixed(2)}deg) skewX(${ft.skewX.toFixed(2)}deg) skewY(${ft.skewY.toFixed(2)}deg) scale(${ft.scale.toFixed(3)})`;
+            });
+            requestAnimationFrame(animateFloatingTexts);
+        }
+
+
+        // --- Settings Overlay ---
+        function openSettings() {
+            populateSettings();
+            DOM.settingsOverlay.classList.add('visible');
+        }
+
+        function closeOverlay(overlayElement) {
+            overlayElement.classList.remove('visible');
+        }
+
+        function populateSettings() {
+            DOM.settingsSectionsContainer.innerHTML = '';
+            
+            AUTORAL_YEARS.forEach(year => {
+                const section = createSettingsSection(`Ano: ${year}`, `autoral_${year}`);
+                DOM.settingsSectionsContainer.appendChild(section);
+                renderImageItemsForSettings(section.querySelector('.settings-image-list'), imagePaths.autoral[year] || [], 'autoral', year);
+            });
+
+            const inspSection = createSettingsSection('Imagens de Inspiração', 'inspiracoes');
+            DOM.settingsSectionsContainer.appendChild(inspSection);
+            renderImageItemsForSettings(inspSection.querySelector('.settings-image-list'), imagePaths.inspiracoes || [], 'inspiracoes');
+        }
+
+        function createSettingsSection(title, typeKey) {
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'settings-section';
+            
+            sectionDiv.innerHTML = `
+                <div class="settings-panel-header" role="button" tabindex="0" aria-expanded="false" data-panel-type-key="${typeKey}">
+                    <h3>${title}</h3>
+                    <span class="settings-panel-toggle-icon">►</span>
+                </div>
+                <div class="settings-panel-content">
+                    <button class="btn btn-subtle add-images-btn" data-type-key="${typeKey}">[+] Adicionar/Atualizar Imagens</button>
+                    <div class="settings-image-list"></div>
+                </div>
+            `;
+            return sectionDiv;
+        }
+        
+        function renderImageItemsForSettings(container, paths, type, year = null) {
+            container.innerHTML = paths.length > 0 ? '' : '<p>Nenhuma imagem carregada.</p>';
+            paths.forEach(filePath => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'settings-image-item';
+                const meta = getMetadata(filePath);
+
+                itemDiv.innerHTML = `
+                    <img src="${filePath}" alt="Miniatura">
+                    <div class="metadata-fields">
+                        <p class="file-path">${filePath}</p>
+                        <label for="nome-${filePath}">Nome para Exibição:</label>
+                        <input type="text" id="nome-${filePath}" data-field="nome" value="${meta.nome || ''}">
+                        
+                        <label for="artista-${filePath}">Artista:</label>
+                        <input type="text" id="artista-${filePath}" data-field="artista" value="${meta.artista || ''}">
+                        
+                        <label for="tecnica-${filePath}">Técnica:</label>
+                        <input type="text" id="tecnica-${filePath}" data-field="tecnica" value="${meta.tecnica || ''}">
+                        
+                        <label for="anoObra-${filePath}">Ano de Criação (Obra):</label>
+                        <input type="text" id="anoObra-${filePath}" data-field="anoObra" value="${meta.anoObra || ''}">
+                        
+                        ${type === 'autoral' ? `
+                        <label for="ordem-${filePath}">Ordem na Galeria:</label>
+                        <input type="number" id="ordem-${filePath}" data-field="ordem" value="${meta.ordem || ''}" min="1">
+                        ` : ''}
+                    </div>
+                `;
+                itemDiv.querySelectorAll('input[data-field]').forEach(input => {
+                    input.addEventListener('blur', (e) => {
+                        const currentMeta = getMetadata(filePath);
+                        currentMeta[e.target.dataset.field] = e.target.value;
+                        saveMetadata(filePath, currentMeta);
+                    });
+                });
+                container.appendChild(itemDiv);
+            });
+        }
+
+        function handleFolderSelection(e, typeKey) {
+            const files = e.target.files;
+            if (!files.length) return;
+
+            let basePrefix = '';
+            let targetArray;
+            
+            if (typeKey === 'inspiracoes') {
+                basePrefix = 'inspiracoes/';
+                imagePaths.inspiracoes = []; 
+                targetArray = imagePaths.inspiracoes;
+                console.log(`[handleFolderSelection - Inspiracoes] Initialized. Base prefix: "${basePrefix}". Target array ready.`);
+            } else if (typeKey.startsWith('autoral_')) {
+                const year = typeKey.split('_')[1];
+                basePrefix = `autoral/${year}/`;
+                imagePaths.autoral[year] = []; 
+                targetArray = imagePaths.autoral[year];
+            } else {
+                console.error("Unknown typeKey in handleFolderSelection:", typeKey);
+                return;
+            }
+            
+            console.log(`[handleFolderSelection - ${typeKey}] Processing ${files.length} files. User must select the specific folder (e.g., 'inspiracoes' or 'autoral/2020').`);
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const reconstructedPath = basePrefix + file.name;
+                
+                if (typeKey === 'inspiracoes') {
+                    console.log(`[handleFolderSelection - Inspiracoes] File ${i + 1}: name="${file.name}", reconstructedPath: "${reconstructedPath}"`);
+                }
+                                
+                if (isValidImageFile(file.name)) {
+                     if (!targetArray.includes(reconstructedPath)) {
+                        targetArray.push(reconstructedPath);
+                    } else {
+                        if (typeKey === 'inspiracoes') {
+                             console.log(`[handleFolderSelection - Inspiracoes] Path "${reconstructedPath}" already in targetArray, not adding again.`);
+                        }
+                    }
+                } else {
+                     if (typeKey === 'inspiracoes') {
+                        console.log(`[handleFolderSelection - Inspiracoes] File "${file.name}" is not a valid image file.`);
+                    }
+                }
+            }
+            
+            saveImagePathsToLocalStorage();
+            populateSettings(); 
+            DOM.folderInput.value = ''; 
+        }
+
+        function isValidImageFile(filename) {
+            return /\.(jpe?g|png|gif|webp)$/i.test(filename);
+        }
+
+        // --- Gallery View ---
+        function openGallery(type, key) {
+            currentGalleryType = type;
+            currentGalleryKey = key;
+            
+            DOM.mainPage.classList.add('hidden');
+            DOM.galleryView.classList.add('visible');
+
+            // MODIFICATION START: Hide all action buttons initially, then show conditionally
+            DOM.organizeBtn.classList.add('hidden');
+            DOM.disorganizeBtn.classList.add('hidden');
+            DOM.ilhasAraraBtn.classList.add('hidden');
+            DOM.espelhoEstranhoBtn.classList.add('hidden');
+            // MODIFICATION END
+
+            let title = '';
+            if (type === 'autoral') {
+                title = key;
+                // MODIFICATION: Remove clickable class and icon from title, just set text content
+                DOM.galleryTitleText.classList.remove('clickable'); 
+                DOM.galleryTitleText.textContent = title;
+
+                // MODIFICATION: Show appropriate layout button
+                DOM.organizeBtn.classList.toggle('hidden', currentAutoralLayout !== 'baguncado');
+                DOM.disorganizeBtn.classList.toggle('hidden', currentAutoralLayout !== 'organizado');
+
+                // MODIFICATION: Show special link buttons if applicable
+                if (key === '2024') {
+                    DOM.ilhasAraraBtn.classList.remove('hidden');
+                }
+                if (key === '2025') {
+                    DOM.espelhoEstranhoBtn.classList.remove('hidden');
+                }
+
+            } else { // 'inspiracoes'
+                title = 'Inspirações';
+                DOM.galleryTitleText.classList.remove('clickable'); // Ensure it's not clickable
+                DOM.galleryTitleText.textContent = title;
+                // All action buttons (layout, special links) remain hidden for 'inspiracoes'
+            }
+            
+            renderGalleryImages();
+        }
+
+        function closeGallery() {
+            DOM.galleryView.classList.remove('visible');
+            DOM.mainPage.classList.remove('hidden');
+            // MODIFICATION START: Ensure all gallery action buttons are hidden on close
+            DOM.organizeBtn.classList.add('hidden');
+            DOM.disorganizeBtn.classList.add('hidden');
+            DOM.ilhasAraraBtn.classList.add('hidden');
+            DOM.espelhoEstranhoBtn.classList.add('hidden');
+            // MODIFICATION END
+        }
+
+        function toggleAutoralLayout() {
+            if (currentGalleryType !== 'autoral') return;
+            currentAutoralLayout = (currentAutoralLayout === 'baguncado') ? 'organizado' : 'baguncado';
+            
+            // MODIFICATION: Update title text content (no icon)
+            DOM.galleryTitleText.textContent = currentGalleryKey; 
+            
+            // MODIFICATION: Update visibility of layout buttons
+            DOM.organizeBtn.classList.toggle('hidden', currentAutoralLayout !== 'baguncado');
+            DOM.disorganizeBtn.classList.toggle('hidden', currentAutoralLayout !== 'organizado');
+            
+            renderGalleryImages();
+        }
+
+        function renderGalleryImages() {
+            DOM.galleryImagesContainer.innerHTML = '';
+            highestZIndex = 10;
+
+            let pathsToRender = [];
+            if (currentGalleryType === 'autoral') {
+                pathsToRender = imagePaths.autoral[currentGalleryKey] || [];
+                DOM.galleryImagesContainer.className = `gallery-images-container ${currentAutoralLayout}`;
+                if (currentAutoralLayout === 'organizado') {
+                    pathsToRender.sort((a, b) => {
+                        const metaA = getMetadata(a);
+                        const metaB = getMetadata(b);
+                        const orderA = parseInt(metaA.ordem) || Infinity;
+                        const orderB = parseInt(metaB.ordem) || Infinity;
+                        if (orderA === orderB) return a.localeCompare(b);
+                        return orderA - orderB;
+                    });
+                }
+            } else { // inspiracoes
+                pathsToRender = imagePaths.inspiracoes || [];
+                DOM.galleryImagesContainer.className = 'gallery-images-container baguncado';
+            }
+
+            if (pathsToRender.length === 0) {
+                DOM.galleryImagesContainer.innerHTML = '<p style="text-align:center; margin-top: 50px; font-size: 1.2em; color: #777;">Nenhuma imagem encontrada para esta seção.</p>';
+                return;
+            }
+
+            pathsToRender.forEach((imgPath, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'gallery-image-wrapper';
+                
+                const img = document.createElement('img');
+                img.src = imgPath;
+                img.alt = `Imagem ${index + 1} de ${currentGalleryKey || currentGalleryType}`;
+                img.loading = 'lazy';
+                img.addEventListener('click', () => openLightbox(imgPath));
+                
+                img.onerror = () => { 
+                    console.error(`Error loading image in gallery: ${imgPath}`);
+                    wrapper.innerHTML = `<div style="width:100%; height:100%; border:1px dashed red; display:flex; align-items:center; justify-content:center; font-size:0.8em; color:red;">Erro: ${imgPath.split('/').pop()}</div>`;
+                    wrapper.style.width = DOM.galleryImagesContainer.classList.contains('organizado') ? '180px' : '100px';
+                    wrapper.style.height = DOM.galleryImagesContainer.classList.contains('organizado') ? '220px' : '100px';
+                };
+
+                wrapper.appendChild(img);
+                DOM.galleryImagesContainer.appendChild(wrapper);
+
+                setTimeout(() => {
+                    wrapper.classList.add('loaded');
+                }, index * 100);
+
+                if (DOM.galleryImagesContainer.classList.contains('baguncado')) {
+                    positionBaguncadoImage(wrapper);
+                    makeDraggable(wrapper);
+                }
+            });
+        }
+
+        function positionBaguncadoImage(wrapper) {
+            const containerRect = DOM.galleryImagesContainer.getBoundingClientRect();
+            const img = wrapper.querySelector('img');
+            
+            const setPosition = () => {
+                const imgWidth = wrapper.offsetWidth || 150; 
+                const imgHeight = wrapper.offsetHeight || 150;
+
+                const maxX = Math.max(0, containerRect.width - imgWidth - 20);
+                const maxY = Math.max(0, containerRect.height - imgHeight - 20);
+
+                wrapper.style.left = `${Math.random() * maxX}px`;
+                wrapper.style.top = `${Math.random() * maxY}px`;
+                wrapper.style.transform = `rotate(${(Math.random() - 0.5) * 30}deg)`;
+                wrapper.style.zIndex = Math.floor(Math.random() * highestZIndex);
+            };
+
+            if (img && img.complete && img.naturalWidth > 0) {
+                setPosition();
+            } else if (img) {
+                img.onload = setPosition;
+                img.onerror = () => { 
+                    if (!wrapper.innerHTML.includes('Erro:')) { 
+                         wrapper.innerHTML = `<div style="width:100px; height:100px; border:1px dashed red; display:flex; align-items:center; justify-content:center; font-size:0.7em; color:red;">Load Fail</div>`;
+                    }
+                    setPosition(); 
+                }
+            } else { 
+                 setPosition(); 
+            }
+        }
+
+        function makeDraggable(element) {
+            let offsetX, offsetY, isDragging = false;
+
+            element.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return;
+                isDragging = true;
+                element.classList.add('dragging');
+                element.style.zIndex = ++highestZIndex;
+                
+                const rect = element.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+                
+                DOM.galleryImagesContainer.style.userSelect = 'none';
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                
+                const containerRect = DOM.galleryImagesContainer.getBoundingClientRect();
+                let newX = e.clientX - containerRect.left - offsetX;
+                let newY = e.clientY - containerRect.top - offsetY;
+
+                const elWidth = element.offsetWidth;
+                const elHeight = element.offsetHeight;
+                newX = Math.max(0, Math.min(newX, containerRect.width - elWidth));
+                newY = Math.max(0, Math.min(newY, containerRect.height - elHeight));
+
+                element.style.left = `${newX}px`;
+                element.style.top = `${newY}px`;
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    element.classList.remove('dragging');
+                    DOM.galleryImagesContainer.style.userSelect = '';
+                }
+            });
+        }
+
+
+        // --- Lightbox ---
+        function openLightbox(imagePath) {
+            DOM.lightboxImage.src = imagePath;
+            DOM.lightboxImage.onerror = () => {
+                DOM.lightboxImage.alt = "Erro ao carregar imagem.";
+            };
+            const meta = getMetadata(imagePath);
+            let metadataHTML = '';
+            if (meta.nome || meta.artista || meta.tecnica || meta.anoObra) {
+                if (meta.nome) metadataHTML += `<p><strong>Nome:</strong> ${meta.nome}</p>`;
+                if (meta.artista) metadataHTML += `<p><strong>Artista:</strong> ${meta.artista}</p>`;
+                if (meta.tecnica) metadataHTML += `<p><strong>Técnica:</strong> ${meta.tecnica}</p>`;
+                if (meta.anoObra) metadataHTML += `<p><strong>Ano:</strong> ${meta.anoObra}</p>`;
+            } else {
+                metadataHTML = '<p class="no-info">Informações não disponíveis.</p>';
+            }
+            DOM.lightboxMetadata.innerHTML = metadataHTML;
+            DOM.lightbox.classList.add('visible');
+        }
+
+        // MODIFICATION START: Add SHA-256 Hashing function
+        async function getSha256Hash(inputString) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(inputString);
+            const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hashHex;
+        }
+        // MODIFICATION END
+
+        // --- Event Listeners ---
+        // --- Event Listeners ---
+        function setupEventListeners() {
+            // MODIFICATION START: Central Icon click for settings with password
+            DOM.centralIcon.addEventListener('click', async () => {
+                const rawPassword = prompt("Digite a senha para acessar as configurações:");
+
+                if (rawPassword === null) { // User pressed Cancel or Esc
+                    alert("Senha incorreta."); // Mantendo o alerta original conforme solicitado
+                    return;
+                }
+
+                const password = rawPassword.trim(); 
+
+                if (password === "") { // Verifica se a senha, após o trim, está vazia
+                    alert("Senha incorreta."); // Mantendo o alerta original
+                    return;
+                }
+
+                try {
+                    const hashedInput = await getSha256Hash(password); // Usa a senha "limpa" (sem espaços extras)
+                    
+                    // Linhas de depuração ATIVADAS:
+                    console.log("Senha digitada (após trim):", `"${password}"`); // Adicionado aspas para ver espaços
+                    console.log("Hash gerado:", hashedInput);
+                    console.log("Hashes válidos:", VALID_HASHES);
+
+                    if (VALID_HASHES.includes(hashedInput)) {
+                        console.log("Correspondência de hash encontrada! Abrindo configurações.");
+                        openSettings();
+                    } else {
+                        console.warn("Nenhuma correspondência de hash. Acesso negado.");
+                        alert("Senha incorreta.");
+                    }
+                } catch (error) {
+                    console.error("Erro ao calcular hash ou verificar senha:", error);
+                    alert("Ocorreu um erro ao verificar a senha. Verifique o console do navegador para mais detalhes ou tente novamente.");
+                }
+            });
+            // MODIFICATION END
+
+            DOM.souFaLink.addEventListener('click', () => openGallery('inspiracoes', 'inspiracoes'));
+
+            document.querySelectorAll('.overlay-close-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const targetOverlayId = e.currentTarget.dataset.targetOverlay;
+                    if (targetOverlayId) {
+                        closeOverlay(document.getElementById(targetOverlayId));
+                    }
+                });
+            });
+            
+            [DOM.settingsOverlay, DOM.lightbox].forEach(overlay => {
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) {
+                        closeOverlay(overlay);
+                    }
+                });
+            });
+
+            DOM.settingsSectionsContainer.addEventListener('click', (e) => {
+                if (e.target.classList.contains('add-images-btn')) {
+                    const typeKey = e.target.dataset.typeKey;
+                    DOM.folderInput.dataset.currentTypeKey = typeKey;
+                    DOM.folderInput.click();
+                    return; 
+                }
+
+                const panelHeader = e.target.closest('.settings-panel-header');
+                if (panelHeader) {
+                    const currentContent = panelHeader.nextElementSibling;
+                    const currentIcon = panelHeader.querySelector('.settings-panel-toggle-icon');
+                    const isOpen = currentContent.classList.contains('open');
+
+                    DOM.settingsSectionsContainer.querySelectorAll('.settings-panel-content.open').forEach(openContent => {
+                        if (openContent !== currentContent) {
+                            openContent.classList.remove('open');
+                            openContent.style.maxHeight = null;
+                            const header = openContent.previousElementSibling;
+                            if(header) {
+                                header.setAttribute('aria-expanded', 'false');
+                                header.querySelector('.settings-panel-toggle-icon').classList.remove('open');
+                            }
+                        }
+                    });
+
+                    if (isOpen) {
+                        currentContent.classList.remove('open');
+                        currentContent.style.maxHeight = null;
+                        panelHeader.setAttribute('aria-expanded', 'false');
+                        currentIcon.classList.remove('open');
+                    } else {
+                        currentContent.classList.add('open');
+                        currentContent.style.maxHeight = currentContent.scrollHeight + "px";
+                        panelHeader.setAttribute('aria-expanded', 'true');
+                        currentIcon.classList.add('open');
+                    }
+                }
+            });
+            
+            DOM.settingsSectionsContainer.addEventListener('keydown', (e) => {
+                const panelHeader = e.target.closest('.settings-panel-header');
+                if (panelHeader && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    panelHeader.click();
+                }
+            });
+
+
+            DOM.folderInput.addEventListener('change', (e) => {
+                const typeKey = DOM.folderInput.dataset.currentTypeKey;
+                if (typeKey) {
+                    handleFolderSelection(e, typeKey);
+                }
+            });
+
+            DOM.galleryBackBtn.addEventListener('click', closeGallery);
+            
+            // MODIFICATION: Remove title click for layout toggle, handled by new buttons
+            // DOM.galleryTitleText.addEventListener('click', () => { ... }); // Original listener removed
+
+            // MODIFICATION START: Add event listeners for new gallery buttons
+            DOM.organizeBtn.addEventListener('click', toggleAutoralLayout);
+            DOM.disorganizeBtn.addEventListener('click', toggleAutoralLayout);
+
+            DOM.ilhasAraraBtn.addEventListener('click', () => {
+                window.open('https://scratch.mit.edu/projects/946843033/fullscreen/', '_blank');
+            });
+            DOM.espelhoEstranhoBtn.addEventListener('click', () => {
+                window.open('Espelho_Estranho_Portatil/ESPELHO_ESTRANHO.html', '_blank');
+            });
+            // MODIFICATION END
+        }
+    })();
+    </script>
+</body>
+</html>

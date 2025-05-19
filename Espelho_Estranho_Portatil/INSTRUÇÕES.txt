@@ -1,0 +1,18 @@
+INSTRUÇÕES:
+
+INSTALAR FONTES (Pasta FONTS > Colocar na Pasta Fontes do Sistema)
+
+INSTALAR VISUAL CODE
+
+ABRIR VISUAL CODE
+
+INSTALAR LIVE SERVER (DENTRO DO VISUAL CODE > EXTENSÕES > PROCURAR > LIVE SERVER > INSTALAR)
+
+ABRIR PASTA NO VISUAL CODE "Arquivo (File) > Abrir Pasta (Open Folder) > Achar a  pasta Espelho_Estranho_Portatil > Clicar nela uma vez > Clicar em Abrir
+
+ABRIR O ARQUIVO .HTML (Botão Auxiliar no arquivo "ESPELHO_ESTRANHO" > Abrir com Live Server (Open With Live Server)
+
+
+
+
+

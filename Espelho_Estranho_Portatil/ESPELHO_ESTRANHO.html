@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espelho Estranho</title>
+    <script defer src="face-api.min.js"></script>
+    <style>
+        /* --- Estilos CSS - Revisado V10 (Jitter Suave + Botão Acima + Animação Moldura) --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
+
+        body {
+            font-family: 'Vatican Rough Letters, 8th c. Regular', 'AlphaSmoke', 'Aclonica', Impact, sans-serif;
+            background-color: #EAEAEA; color: #000;
+            display: flex; justify-content: center; align-items: center; text-align: center;
+            position: relative;
+        }
+        /* --- Modo Projeção --- */
+        body.projection-mode { background-image: url("images/textura_fundo.png"); background-size: cover; animation: moveBg 90s linear infinite alternate; }
+        @keyframes moveBg { 0%{background-position:0% 0%} 100%{background-position:100% 100%} }
+        body.projection-mode .capture-layout { display: none !important; }
+        body.projection-mode #projection-image-container { display: block !important; }
+        body.projection-mode .footer-area { display: none !important; }
+        body.projection-mode #circularTextContainer { width: clamp(450px, 95vh, 850px); height: clamp(450px, 95vh, 850px); opacity: 0.5; z-index: 1; }
+        body.projection-mode .content-area { flex-grow: 1; max-width: 90%; width: 90%; max-height: 90vh; margin: 1vh 0; z-index: 1; }
+
+        /* --- Modo Captura --- */
+        body.capture-mode .main-container { overflow-y: hidden; }
+        body.capture-mode #projection-image-container { display: none !important; }
+        body.capture-mode .capture-layout { display: flex !important; }
+
+        /* --- Elementos Comuns / Overlays --- */
+        .main-container { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 20px 50px 20px; position: relative; }
+
+        /* --- ESTILO CHAVE V10: Texto Circular --- */
+        #circularTextContainer {
+            position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
+            width: clamp(450px, 60vh, 400px); height: clamp(450px, 60vh, 400px);
+            pointer-events: none;
+            z-index: 302; /* Abaixo do botão de captura (305), acima do flash (300) */
+            opacity: 0.9;
+        }
+       #circularTextSvg { width: 100%; height: 100%; overflow: visible; }
+        #circularTextSvg text {
+            font-family: inherit;
+            font-size: clamp(2em, 5vw, 8em); /* Mantenha ou ajuste o tamanho base */
+            fill: #B412FF;
+            text-transform: uppercase;
+            transform-origin: center center; /* Essencial para girar no centro */
+            letter-spacing: 25px; /* Reduzi o espaçamento, 25px parece muito */
+
+            /* --- CORREÇÃO AQUI --- */
+            /* Rotação contínua com velocidade linear */
+            /* Ajuste '50s' para a velocidade desejada (maior = mais lento) */
+            animation: rotateText 10s linear infinite,
+            pulseText 8s ease-in-out infinite alternate,
+
+                        jitterText ease-in-out infinite alternate;
+                        
+                     /* Removi pulseText e jitterText para focar na rotação. */
+                     /* Se quiser adicioná-los de volta, coloque vírgula e a definição deles aqui */
+                     /* Ex: animation: rotateText 50s linear infinite, jitterText 1.2s ease-in-out infinite alternate; */
+        }
+
+        /* Definição da rotação (de 0 a 360 graus) */
+        @keyframes rotateText {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Definições de pulseText e jitterText (removidas da aplicação acima, mas mantidas aqui caso queira reativar) */
+        @keyframes pulseText {
+            0% { font-size: clamp(8em, 5.5vw, 10.5em); opacity: 0.6; }
+            100% { font-size: clamp(1.9em, 2.7vw, 8.7em); opacity: 0.4; }
+        }
+        @keyframes jitterText {
+             10%, 100% { transform: translateX(0); }
+             50% { transform: translateX(-0.5px); }
+             75% { transform: translateX(1px); }
+             100% { transform: translateX(-1px); }
+        }
+
+        /* --- Layout Captura --- */
+        .capture-layout { width: 100%; display: flex; justify-content: center; align-items: center; padding: 0 80px; position: relative; z-index: 5; }
+        .side-button { position: absolute; top: 50%; transform: translateY(-50%); border: none; background: none; padding: 0; cursor: pointer; width: clamp(45px, 7vw, 60px); height: auto; transition: transform 0.2s, filter 0.2s; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.2)); z-index: 7; }
+        .side-button img { display: block; width: 100%; height: auto; }
+        .side-button:hover:not(:disabled) { transform: translateY(-50%) scale(1.15); filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.3)); }
+        .side-button:disabled { cursor: not-allowed; filter: grayscale(90%) opacity(40%); transform: translateY(-50%); }
+        #memoryButton { left: 10px; } #forgetButton { right: 10px; }
+        .content-area { max-width: 70vh; width: 100%; display: flex; flex-direction: column; align-items: center; position: relative; margin: 0; flex-shrink: 1; min-height: 0; }
+        .webcam-frame-container { position: relative; width: 100%; background-color: transparent; aspect-ratio: 1 / 1.4; max-width: 100%; max-height: 100%; margin-bottom: 15px; overflow: hidden; }
+        #webcamFeed { display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; transform: scaleX(-1); object-fit: cover; background-color: #111; }
+
+        /* Overlay Mask (OK - Webcam Menor) */
+        #webcamOverlayMask { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; background: radial-gradient( ellipse 25% 35% at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 75%, #EAEAEA 85%, #EAEAEA 100% ); }
+
+        #mirrorFrame { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; object-fit: contain; /* Centro DEVE ser transparente */ }
+        #captureCanvas { display: none; }
+        #stepCounter { position: absolute; bottom: 8%; right: 8%; background: rgba(0,0,0,0.6); color: #fff; padding: 4px 9px; border-radius: 10px; font-size: 1em; font-family: monospace; z-index: 4; font-weight: bold; }
+
+        /* --- ESTILO CHAVE V10: Botão de Captura Acima de Tudo --- */
+        #captureButtonContainer { margin-top: -90px; position: relative; z-index: 305; /* ACIMA do texto (302) e flash (300) */ flex-shrink: 0; }
+        #captureButton { display:block; border:none; background:none; padding:0; cursor:pointer; width:clamp(65px,12vw,90px); height:auto; transition:transform .1s ease; filter:drop-shadow(2px 2px 3px rgba(0,0,0,.3)); }
+        #captureButton img{display:block;width:100%;height:auto;}
+        #captureButton:hover:not(:disabled){transform:scale(1.1)}
+        #captureButton:active:not(:disabled){transform:scale(.95)}
+        #captureButton:disabled{cursor:not-allowed;filter:grayscale(80%) drop-shadow(none);opacity:.6}
+
+        /* Flash (OK - Z-index 300) */
+        #flashOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: white; opacity: 0; pointer-events: none; z-index: 300; transition: opacity 0.05s ease-out; }
+        #flashOverlay.flash { opacity: 0.4; }
+
+        /* Mensagens (OK no Topo) */
+        #statusMessage, #errorMessage { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; margin: 0 auto; padding: 6px 10px; border-radius: 4px; font-weight: bold; font-family: Arial, sans-serif; font-size: clamp(0.7em, 1.3vw, 0.8em); z-index: 101; text-shadow: 1px 1px 1px rgba(255,255,255,0.7); text-align: center; }
+        .message.hidden{display:none;}
+        .error-message{color:#c0392b;background-color:#f9d5d2;border:1px solid #e74c3c;}
+        .info-message{color:#B412FF;background-color:rgba(200,150,255,.2);border:1px solid rgba(180,18,255,.5);}
+
+        /* --- Projeção --- */
+        #projection-image-container { position: relative; width: 100%; height: 100%; }
+        #projectionImageA, #projectionImageB { display: block; width: 100%; height: 100%; background-color: transparent; border: none; object-fit: contain; position: absolute; top: 0; left: 0; opacity: 0; transition: opacity 5s ease-in-out; }
+
+        /* --- Footer (Apenas modo captura) --- */
+        .footer-area { position: fixed; bottom: 0; left: 0; width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 5px 15px; background: none; z-index: 50; pointer-events: none; height: 30px; }
+        #credits { font-size:clamp(.6em,1.5vw,.75em); color:rgba(180,18,255,.8); text-align:left; font-family:Arial,sans-serif; flex-grow:1; margin-right:10px; text-shadow:1px 1px 1px rgba(0,0,0,.2); pointer-events:auto; }
+        #footerButtons { display: flex; gap: 10px; align-items: center; pointer-events: auto; }
+        #configButton, #projectionButton { pointer-events:auto; display:block; border:none; background:none; padding:0; cursor:pointer; width:clamp(32px,5.5vw,45px); height:auto; transition:transform .2s, filter .2s; filter:drop-shadow(1px 1px 1px rgba(0,0,0,.3)); }
+        #configButton img, #projectionButton img { display: block; width: 100%; height: auto; }
+        #configButton:hover, #projectionButton:hover { transform: scale(1.15); filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.4)); }
+
+        /* --- Menus Overlay --- */
+        .overlay-menu { position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(80,80,80,.9); color:#EAEAEA; z-index:400; /* Z-index alto para menus */ display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; opacity:0; visibility:hidden; transition:opacity .3s ease, visibility .3s ease; }
+        .overlay-menu:not(.hidden){opacity:1;visibility:visible}
+        .menu-content { background-color: rgba(234,234,234,0.95); color: #222; padding: 25px; border-radius: 8px; max-width: 90%; width: 500px; max-height: 85%; overflow-y: auto; position: relative; box-shadow: 0 5px 20px rgba(0,0,0,0.4); font-family: Arial, sans-serif; backdrop-filter: blur(5px); }
+        .menu-title { font-size:clamp(1.4em, 4vw, 1.8em); color:#B412FF; margin-bottom:20px; font-family:'Aclonica', Impact, sans-serif; text-transform:uppercase; text-align:center; }
+        .close-menu-button { position:absolute; top:8px; right:10px; background:0 0; border:none; font-size:1.8em; color:#888; cursor:pointer; padding:5px; line-height:1; font-family:Arial,sans-serif; font-weight:700; }
+        .close-menu-button:hover { color: #B412FF; }
+
+        /* --- Grade da Memória (OK) --- */
+        #memoryGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 15px; width: 100%; padding-top: 10px; }
+        .memoryItem { text-align: center; display: flex; flex-direction: column; align-items: center; }
+        .memoryItem img { width: 100%; height: auto; border: 2px solid #B412FF; border-radius: 4px; margin-bottom: 8px; display: block; background-color: #ddd; aspect-ratio: 1 / 1.4; object-fit: cover; }
+        .memoryItem .actions { display: flex; justify-content: center; align-items: center; gap: 15px; width: 100%; }
+        .memoryItem button, .memoryItem a { background: none; border: none; padding: 0; cursor: pointer; display: inline-block; line-height: 0; }
+        .memoryItem img.action-icon { width: 24px; height: 24px; transition: transform 0.2s ease; display: block; filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.2)); }
+        .memoryItem button:hover img.action-icon, .memoryItem a:hover img.action-icon { transform: scale(1.25); filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3)); }
+        #memoryGrid p { grid-column: 1 / -1; text-align: center; color: #555; font-style: italic; }
+
+        /* --- Menu Configuração --- */
+        #configOptions label { display: block; margin: 12px 0; font-size: 1em; color: #333; border-bottom: 1px dashed #ccc; padding-bottom: 10px; cursor: pointer; }
+        #configOptions label:last-of-type { border-bottom: none; }
+        #configOptions input[type="radio"] { margin-right: 8px; transform: scale(1.1); vertical-align: middle; cursor: pointer; }
+        #configOptions input[type="number"] { margin-left: 5px; width: 55px; padding:5px 8px; border:1px solid #ccc; border-radius:4px; font-size:1em; vertical-align:middle; }
+        #customCountLabel input[type=radio] { margin-right: 5px;}
+        #saveConfigButton { font-size:1em; padding:8px 20px; background-color:#9d4edd; color:white; border:none; border-radius:5px; cursor:pointer; transition:background-color .2s; margin-top:20px; display:block; margin-left:auto; margin-right:auto; }
+        #saveConfigButton:hover { background-color: #7b2cbf; }
+        #photoCountDisplay { font-size: 0.85em; color: #555; margin-top: 12px; font-family:monospace; font-weight:700; text-align:center; }
+
+        /* --- Visualizador de Imagem --- */
+        #imageViewer { position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,.92); z-index:450; /* Acima dos menus? */ display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; opacity:0; visibility:hidden; transition:opacity .3s ease,visibility .3s ease; }
+        #imageViewer:not(.hidden){opacity:1;visibility:visible}
+        #imageViewer img { max-width: 92%; max-height: 88%; border: 2px solid #B412FF; margin-bottom: 10px; background-color:#222; object-fit:contain; }
+        #closeViewerButton { position:absolute; top:15px; right:20px; background:0 0; border:none; font-size:2.5em; color:#B412FF; cursor:pointer; padding:5px; line-height:1; font-family:Arial,sans-serif; font-weight:700; text-shadow:1px 1px 3px #000; }
+        #closeViewerButton:hover{color:#fff;}
+
+        /* --- Overlay Gerando --- */
+        #generatingOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,.75); color:#fff; font-size:clamp(1.5em, 5vw, 2.5em); display:flex; justify-content:center; align-items:center; z-index:500; /* Mais alto */ opacity:0; visibility:hidden; transition:opacity .3s,visibility .3s; pointer-events:none; text-align:center; font-family:Arial,sans-serif; }
+        #generatingOverlay.visible{opacity:1;visibility:visible;pointer-events:auto}
+
+        /* --- Classe Utilitária --- */
+        .hidden { display: none !important; }
+
+    </style>
+</head>
+<body id="bodyElement">
+
+    <!-- SVG Texto Circular (Z-index 302) -->
+    <div id="circularTextContainer"> <svg id="circularTextSvg" viewBox="0 0 500 500"> <defs><path id="textPathCircle" d="M 250, 250 m -200, 0 a 200,200 0 1,1 400,0 a 200,200 0 1,1 -400,0" fill="none"/></defs> <text dy="-15"><textPath xlink:href="#textPathCircle" startOffset="50%" text-anchor="middle">ESPELHO ESTRANHO</textPath></text> </svg> </div>
+
+    <!-- Container Principal -->
+    <div id="mainContainer" class="main-container"> <!-- Conteúdo injetado dinamicamente --> </div>
+
+    <!-- Mensagens (Posicionadas no topo globalmente) -->
+    <p id="statusMessage" class="message info-message hidden" aria-live="polite"></p>
+    <p id="errorMessage" class="message error-message hidden" role="alert"></p>
+
+    <!-- Menus e Overlays -->
+    <div id="memoryMenu" class="overlay-menu hidden"> <div class="menu-content"> <button class="close-menu-button" id="closeMemoryButton" aria-label="Fechar Menu Memória">&times;</button> <h21 class="menu-title">Memória</h2> <div id="memoryGrid"></div> </div> </div>
+    <div id="configMenu" class="overlay-menu hidden"> <div class="menu-content"> <button class="close-menu-button" id="closeConfigButton" aria-label="Fechar Menu Configuração">&times;</button> <h2 class="menu-title">Configuração</h2> <div id="configOptions"> <label><input type="radio" name="photoOption" value="2" checked>Misturar 2 Fotos</label> <label><input type="radio" name="photoOption" value="4">Misturar 4 Fotos</label> <label><input type="radio" name="photoOption" value="8">Misturar 8 Fotos</label> <label id="customCountLabel"><input type="radio" name="photoOption" value="custom">Misturar <input type="number" id="customPhotoCount" min="1" max="40" value="10" aria-label="Número customizado de fotos"> Fotos</label> <p id="photoCountDisplay">Modo: 2 foto(s)</p><label style="margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 10px;"> <input type="checkbox" id="effectPsychedelicToggle"> Ativar Efeito Psicodélico</label> </div> <button id="saveConfigButton">Aplicar</button> </div> </div>
+    <div id="imageViewer" class="hidden"> <button id="closeViewerButton" aria-label="Fechar Visualizador">&times;</button> <img id="viewerImage" src="" alt="Visualização de Imagem Gerada"> </div>
+    <div id="generatingOverlay" role="status" aria-live="assertive">你好</div>
+    <div id="flashOverlay" aria-hidden="true"></div>
+
+    <script>
+    // --- JS Completo (Revisão V10 - Lógica animação moldura adicionada) ---
+
+    // --- Configs e Globais ---
+    const CONFIG = {
+        EFFECT_CONFIG_KEY: 'effectConfig',
+        VIDEO_WIDTH: 640, VIDEO_HEIGHT: 480, MOSAIC_GRID_SIZE: 12,
+        PROJECTION_DISPLAY_TIME: 15000, PROJECTION_FADE_TIME: 5000,
+        LOCALSTORAGE_PREFIX: 'espelqhoEstranho_FinalV10_', // V10
+        ALL_MOSAICS_KEY: 'allMosaics', CONFIG_KEY: 'config',
+        BROADCAST_CHANNEL_NAME: 'espelho_estranho_final_v10_channel', // V10
+        NOISE_INTENSITY: 10, RIPPLE_AMPLITUDE: 6, RIPPLE_FREQUENCY: 0.1,
+        FACEAPI_MIN_CONFIDENCE: 0.5, PHOTO_JPEG_QUALITY: 0.9, MOSAIC_JPEG_QUALITY: 0.9,
+        MAX_CUSTOM_PHOTOS: 50, MAX_MEMORY_ITEMS: 50,
+    };
+    const STATE = { isPsychedelicEffectActive: false, isProjectionMode: false, currentMode: '', webcamStream: null, capturedPhotosData: [], requiredPhotoCount: 2, currentPhotoIndex: 0, isCapturing: false, isGenerating: false, faceApiReady: false, allGeneratedMosaics: [], projectionIntervalId: null, activeProjectionSlot: 'A', lastProjectedIndex: -1, currentConfig: { count: 2, isCustom: false },};
+    const DOM = {};
+    const broadcastChannel = new BroadcastChannel(CONFIG.BROADCAST_CHANNEL_NAME);
+
+    // --- Inicialização ---
+    window.addEventListener('load', async () => {
+    console.log("Load event V12.1");
+    setupMode(); findAllBaseElements(); loadConfig(); loadMosaicsFromStorage();
+    // REMOVIDO: Carregamento inicial do estado aqui, será feito na função de verificação
+
+    if (STATE.isProjectionMode) {
+        initializeProjectionModeUI(); findAllProjectionElements(); if (!validateDOMElements('projection')) return;
+        decideProjectionState();
+    } else { // Modo Captura
+        initializeCaptureModeUI(); findAllCaptureElements(); if (!validateDOMElements('capture')) return;
+        updateForgetButtonState(); updateStepCounter(); setStatus('ENTRANDO NO LIMBO...', true);
+        await loadFaceApiModels();
+        if (STATE.faceApiReady) { startWebcam(); } else { /* ... erro IA ... */ }
+    }
+
+    // --- Verifica e aplica estado do efeito DEPOIS de tudo ---
+    checkAndApplyUnifiedEffectState();
+    // --------------------------------------------------------
+    setupGlobalListeners();
+    console.log("INICIALIZAÇÃO VERSÃO FINAL, APARENTEMENTE TUDO CERTO...");
+});
+
+function loadConfig() {
+    const savedConfig = JSON.parse(localStorage.getItem(key(CONFIG.CONFIG_KEY)) || '{"count":2,"isCustom":false}');
+    STATE.currentConfig = savedConfig; // Atualiza a configuração no estado
+    STATE.requiredPhotoCount = savedConfig.count; // Atualiza o contador requerido no estado
+    console.log("Initial config loaded:", STATE.currentConfig);
+    // Atualiza o display visual SE o elemento já existir (acontece no init da UI captura)
+    if (DOM.photoCountDisplay) {
+        updatePhotoCountDisplay(STATE.currentConfig.count, STATE.currentConfig.isCustom);
+    }
+}
+
+    function setupMode() { const u=new URLSearchParams(window.location.search); STATE.isProjectionMode=u.get('projection')==='true'; STATE.currentMode=STATE.isProjectionMode?'projection':'capture'; document.title=`Espelho Estranho ${STATE.currentMode.toUpperCase()}`; document.body.classList.add(STATE.currentMode+'-mode'); document.body.classList.remove(STATE.isProjectionMode?'capture-mode':'projection-mode'); console.log(`Mode: ${STATE.currentMode}`); }
+    function findAllBaseElements(){ DOM.bodyElement=document.getElementById('bodyElement'); DOM.mainContainer=document.getElementById('mainContainer'); DOM.statusMessage=document.getElementById('statusMessage'); DOM.errorMessage=document.getElementById('errorMessage'); DOM.memoryMenu=document.getElementById('memoryMenu'); DOM.memoryGrid=document.getElementById('memoryGrid'); DOM.closeMemoryButton=document.getElementById('closeMemoryButton'); DOM.generatingOverlay=document.getElementById('generatingOverlay'); DOM.flashOverlay=document.getElementById('flashOverlay'); DOM.configMenu=document.getElementById('configMenu'); DOM.closeConfigButton=document.getElementById('closeConfigButton'); DOM.configOptions=document.getElementById('configOptions'); DOM.customPhotoCountInput=document.getElementById('customPhotoCount'); DOM.saveConfigButton=document.getElementById('saveConfigButton'); DOM.photoCountDisplay=document.getElementById('photoCountDisplay'); DOM.imageViewer=document.getElementById('imageViewer'); DOM.viewerImage=document.getElementById('viewerImage'); DOM.closeViewerButton=document.getElementById('closeViewerButton'); DOM.circularTextContainer=document.getElementById('circularTextContainer'); console.log("Base DOM found."); }
+    function findAllCaptureElements() { DOM.captureLayout=document.getElementById('captureLayout'); DOM.memoryButton=document.getElementById('memoryButton'); DOM.forgetButton=document.getElementById('forgetButton'); DOM.contentArea=document.getElementById('captureContentArea'); DOM.webcamFrameContainer=document.querySelector('.webcam-frame-container'); DOM.webcamFeed=document.getElementById('webcamFeed'); DOM.webcamOverlayMask=document.getElementById('webcamOverlayMask'); DOM.mirrorFrame=document.getElementById('mirrorFrame'); DOM.captureCanvas=document.getElementById('captureCanvas'); DOM.stepCounter=document.getElementById('stepCounter'); DOM.captureButtonContainer=document.getElementById('captureButtonContainer'); DOM.captureButton=document.getElementById('captureButton'); DOM.captureButtonImg=document.getElementById('captureButtonImg'); DOM.footerArea=document.getElementById('footerArea'); DOM.footerButtonsContainer=document.getElementById('footerButtons'); DOM.creditsElement=document.getElementById('credits'); DOM.configButton=document.getElementById('configButton'); DOM.projectionButton=document.getElementById('projectionButton'); console.log("Capture DOM found."); }
+    function findAllProjectionElements() { DOM.contentArea=document.getElementById('projectionContentArea'); DOM.projectionImageContainer=document.getElementById('projection-image-container'); DOM.projectionImageA=document.getElementById('projectionImageA'); DOM.projectionImageB=document.getElementById('projectionImageB'); console.log("Projection DOM found."); }
+    function validateDOMElements(mode) { let r; const b=['bodyElement','mainContainer','statusMessage','errorMessage','memoryMenu','memoryGrid','closeMemoryButton','generatingOverlay','flashOverlay','configMenu','closeConfigButton','configOptions','customPhotoCountInput','saveConfigButton','photoCountDisplay','imageViewer','viewerImage','closeViewerButton','circularTextContainer']; const c=['captureLayout','memoryButton','forgetButton','contentArea','webcamFrameContainer','webcamFeed','webcamOverlayMask','mirrorFrame','captureCanvas','stepCounter','captureButtonContainer','captureButton','captureButtonImg','footerArea','footerButtonsContainer','creditsElement','configButton','projectionButton']; const p=['contentArea','projectionImageContainer','projectionImageA','projectionImageB']; if(mode==='capture'){r=[...b,...c];}else if(mode==='projection'){r=[...b,...p];}else{console.error("Invalid mode validate:",mode);return false;} let f=true;const m=[];for(const k of r){if(!(k in DOM)||!DOM[k]){if(k!=='webcamStream'){m.push(k);f=false;}}} if(f){console.log(`DOM valid: ${mode}`);}else{console.error(`DOM invalid: ${mode}. Missing: ${m.join(', ')}`);const e=document.getElementById('errorMessage')||DOM.errorMessage;if(e){e.textContent=`Erro UI (${mode}): Falta ${m.join(', ')}.`;e.classList.remove('hidden');}} return f; }
+    async function loadFaceApiModels() { const M='.'; try{if(typeof faceapi==='undefined'){throw new Error("face-api.js missing");} setStatus('SOMANDO OS CORPOS...',true);await faceapi.nets.ssdMobilenetv1.loadFromUri(M+'/models'); setStatus('ESTRALANDO OS TECIDOS DA REALIDADE...',true);await faceapi.nets.faceLandmark68Net.loadFromUri(M+'/models'); console.log("IA Loaded");STATE.faceApiReady=true;}catch(e){console.error("IA Error:",e);STATE.faceApiReady=false;showError(`Erro IA: ${e.message}.`);} }
+    function initializeCaptureModeUI() { console.log("[Capture] Init UI V10"); DOM.mainContainer.innerHTML=`<div class="capture-layout" id="captureLayout"><button id="memoryButton" class="side-button" aria-label="Abrir Memória"><img src="images/icon_memoria.png" alt="Memória"></button><div class="content-area" id="captureContentArea"><div class="webcam-frame-container"><video id="webcamFeed" autoplay playsinline muted aria-label="Webcam"></video><div id="webcamOverlayMask" aria-hidden="true"></div><img id="mirrorFrame" src="images/moldura_espelho.png"><canvas id="captureCanvas" aria-hidden="true"></canvas><div id="stepCounter" aria-live="polite">1/${STATE.requiredPhotoCount}</div></div><div id="captureButtonContainer"><button id="captureButton" aria-label="Capturar Foto" disabled><img id="captureButtonImg" src="images/icon_capturar_aberto.png" alt="Capturar"></button></div></div><button id="forgetButton" class="side-button" aria-label="Esquecer Todas" disabled><img src="images/icon_esquecimento.png" alt="Esquecer"></button></div><div class="footer-area" id="footerArea"><div id="credits">Instalação por Lissa, Luiz, Nicholas, Thalyta - Psicologia da Arte - Orientação Polly Rosa - 2025</div><div id="footerButtons"><button id="configButton" aria-label="Configurações"><img src="images/icon_config.png" alt="Cfg"></button><button id="projectionButton" aria-label="Abrir Projeção"><img src="images/icon_projection.png" alt="Proj"></button></div></div>`; console.log("[Capture] UI HTML injected (V10)."); }
+    function setupGlobalListeners() { window.addEventListener('resize',handleResize); window.addEventListener('keydown',handleKeyPress); if(DOM.closeMemoryButton) DOM.closeMemoryButton.addEventListener('click',toggleMemoryMenu); if(DOM.closeConfigButton) DOM.closeConfigButton.addEventListener('click',toggleConfigMenu); if(DOM.saveConfigButton) DOM.saveConfigButton.addEventListener('click',saveAndApplyConfig); if(DOM.configOptions) DOM.configOptions.addEventListener('change',handleConfigSelectionChange); if(DOM.closeViewerButton) DOM.closeViewerButton.addEventListener('click',hideImageViewer); if(DOM.imageViewer) DOM.imageViewer.addEventListener('click',(e)=>{if(e.target===DOM.imageViewer)hideImageViewer();}); if(!STATE.isProjectionMode){ if(DOM.captureButton)DOM.captureButton.addEventListener('click',handleCaptureClick); if(DOM.memoryButton)DOM.memoryButton.addEventListener('click',toggleMemoryMenu); if(DOM.forgetButton)DOM.forgetButton.addEventListener('click',clearAllData); if(DOM.configButton)DOM.configButton.addEventListener('click',toggleConfigMenu); if(DOM.projectionButton)DOM.projectionButton.addEventListener('click',openProjectionWindow); console.log("Capture listeners added."); }else{console.log("Skip capture listeners.");} broadcastChannel.onmessage=handleBroadcastMessage; console.log("Global listeners set."); }
+    function startWebcam() { setStatus('ENTRANDO NO LIMBO...'); if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){showError("Navegador não suporta webcam.");if(DOM.captureButton)DOM.captureButton.disabled=true;return;} if(!DOM.webcamFeed){showError("Vídeo não encontrado.");return;} const c={video:{width:{ideal:CONFIG.VIDEO_WIDTH},height:{ideal:CONFIG.VIDEO_HEIGHT},facingMode:"user"},audio:false}; navigator.mediaDevices.getUserMedia(c).then(s=>{STATE.webcamStream=s;DOM.webcamFeed.srcObject=s;DOM.webcamFeed.style.display='block'; DOM.webcamFeed.onloadedmetadata=()=>{ DOM.webcamFeed.play().catch(e=>console.error("Play err:",e)); const w=DOM.webcamFeed.videoWidth; const h=DOM.webcamFeed.videoHeight; console.log(`Webcam: ${w}x${h}`); if(DOM.captureCanvas){DOM.captureCanvas.width=w||CONFIG.VIDEO_WIDTH;DOM.captureCanvas.height=h||CONFIG.VIDEO_HEIGHT;console.log(`Canvas: ${DOM.captureCanvas.width}x${DOM.captureCanvas.height}`);}else{console.warn("Canvas missing.");} if(STATE.faceApiReady){setStatus(`CAPTURA-SE`, true);if(DOM.captureButton)DOM.captureButton.disabled=false;}else{setStatus('Aguardando IA...');if(DOM.captureButton)DOM.captureButton.disabled=true;}};}).catch(e=>{console.error("Webcam Err:",e);let m="Não foi possível acessar webcam.";if(e.name==="NotAllowedError"){m="Permissão negada.";}else if(e.name==="NotFoundError"){m="Webcam não encontrada.";}else if(e.name==="NotReadableError"){m="Webcam em uso?";} showError(`${m} (${e.name})`);if(DOM.captureButton)DOM.captureButton.disabled=true;}); }
+    function handleKeyPress(event) { if(STATE.isProjectionMode||(DOM.memoryMenu&&!DOM.memoryMenu.classList.contains('hidden'))||(DOM.configMenu&&!DOM.configMenu.classList.contains('hidden'))||(DOM.imageViewer&&!DOM.imageViewer.classList.contains('hidden'))||STATE.isGenerating){return;} if(event.code==='Space'||event.key===' '){event.preventDefault();if(DOM.captureButton&&!DOM.captureButton.disabled){handleCaptureClick();}} }
+
+    // --- JS CHAVE V10: Animação da Moldura Adicionada ---
+    function handleCaptureClick() {
+        if (STATE.isCapturing || STATE.isGenerating || !STATE.faceApiReady || !DOM.captureButton || !DOM.captureButtonImg || !DOM.mirrorFrame || !DOM.flashOverlay) { console.warn("Capture blocked", STATE); return; }
+        STATE.isCapturing = true; DOM.captureButton.disabled = true; setStatus('ROUBANDO VOCÊ DE VOCÊ PARA DAR AO OUTRO', true);
+        
+        if (DOM.mirrorFrame) {
+            DOM.mirrorFrame.src = "images/moldura_espelhofechado.png";
+            setTimeout(() => { if (DOM.mirrorFrame) DOM.mirrorFrame.src = "images/moldura_espelho.png"; }, 150);
+        }
+        // Animação do botão
+        if (DOM.captureButtonImg) {
+            DOM.captureButtonImg.src = "images/icon_capturar_fechado.png";
+            setTimeout(() => { if (DOM.captureButtonImg) DOM.captureButtonImg.src = "images/icon_capturar_aberto.png"; }, 150);
+        }
+        // --- NOVA LÓGICA: Animação da moldura ---
+       
+        // Flash
+        if (DOM.flashOverlay) {
+            DOM.flashOverlay.classList.add('flash');
+            setTimeout(() => { DOM.flashOverlay.classList.remove('flash'); }, 150);
+        }
+        // Atraso para processamento
+        setTimeout(captureAndDetect, 100);
+    }
+
+    async function captureAndDetect() {
+        if (!STATE.webcamStream) { showError("Webcam inativa."); resetCaptureState(); return; }
+        if (!DOM.captureCanvas || !DOM.webcamFeed) { showError("Erro interno: Canvas/Vídeo."); resetCaptureState(); return; }
+
+        // Status durante processamento da foto atual
+        setStatus(`彼らは一つ`, true);
+
+        const cvs = DOM.captureCanvas;
+        const ctx = cvs.getContext('2d', { willReadFrequently: true });
+        if (!ctx) { showError("Erro ctx canvas."); resetCaptureState(); return; }
+        const cw = cvs.width; const ch = cvs.height;
+        ctx.save(); ctx.translate(cw, 0); ctx.scale(-1, 1); ctx.drawImage(DOM.webcamFeed, 0, 0, cw, ch); ctx.restore();
+
+        try {
+            console.time("Det");
+            const dts = await faceapi?.detectSingleFace(cvs, new faceapi.SsdMobilenetv1Options({ minConfidence: CONFIG.FACEAPI_MIN_CONFIDENCE })).withFaceLandmarks();
+            console.timeEnd("Det");
+            const url = cvs.toDataURL('image/jpeg', CONFIG.PHOTO_JPEG_QUALITY);
+            const id = `img_${Date.now()}_${STATE.currentPhotoIndex}`;
+            STATE.capturedPhotosData.push({ id: id, dataUrl: url, landmarks: dts?.landmarks || null });
+            console.log(`Pic ${STATE.currentPhotoIndex + 1} OK.${dts ? 'Face.' : 'No face.'}`);
+            STATE.currentPhotoIndex++;
+            updateStepCounter();
+
+            if (STATE.currentPhotoIndex >= STATE.requiredPhotoCount) {
+                // --- ÚLTIMA FOTO CAPTURADA ---
+            // Fixo durante geração
+                STATE.isGenerating = true;
+                STATE.isCapturing = false;
+                if (DOM.generatingOverlay) DOM.generatingOverlay.classList.add('visible');
+
+                // Atraso inicial para mostrar overlay
+                setTimeout(async () => { // Tornamos a função do timeout async
+                    try {
+                        // 1. Gera mosaico (mostrará 'INTERPENETRARAM-SE' com autoClear=true)
+                        await generateAndProcessMosaic(STATE.capturedPhotosData);
+                    } catch (error) {
+                        // Erros já são tratados dentro de generateAndProcessMosaic
+                        console.error("Erro retornado por generateAndProcessMosaic:", error);
+                    } finally {
+                        // 2. ATRASA o reset e a definição do status final 'CAPTURE-SE'
+                        setTimeout(() => {
+                             // Verifica se ainda estamos no modo captura antes de resetar
+                            if (!STATE.isProjectionMode) {
+                                STATE.isGenerating = false; // Marca que terminou a geração *antes* de resetar
+                                resetCaptureSequence(true); // Chama o reset (que define 'CAPTURE-SE')
+                            } else {
+                                // Se mudou para projeção enquanto gerava, apenas marca como não gerando
+                                STATE.isGenerating = false;
+                            }
+                        }, 1500); // Atraso > autoClear da mensagem INTERPENETRARAM-SE (3000ms)
+                    }
+                }, 1500); // Fim do setTimeout inicial
+
+            } else {
+                // --- AINDA FALTAM FOTOS ---
+                // Mostra CAPTURE-SE temporariamente e habilita o botão
+                 setStatus(`CAPTURE-SE`, true); // autoClear = true aqui está OK
+                 resetCaptureState(true); // Passa true para indicar que NÃO deve definir status persistente
+            }
+        } catch (e) {
+            console.error("Capture Err:", e);
+            showError("Erro processando.");
+            resetCaptureState(); // Tenta resetar estado mesmo em erro
+        }
+    }
+
+    // Modificada para definir o status persistente 'CAPTURE-SE'
+    // Adicionado parâmetro opcional para controle fino
+    function resetCaptureState(intermediateCapture = false) {
+        STATE.isCapturing = false; // Sempre reseta a flag de captura individual
+
+        // Só altera botão e status se NÃO estiver gerando
+        if (!STATE.isGenerating && DOM.captureButton) {
+            DOM.captureButton.disabled = false;
+            // Define o status persistente APENAS se NÃO for uma captura intermediária
+            if (!intermediateCapture) {
+                 setStatus('CAPTURE-SE', false); // autoClear = false
+            }
+        }
+        // Se estiver gerando, o botão continua desabilitado e o status não muda aqui.
+    }
+
+    // Chamará resetCaptureState, que definirá o status final
+    function resetCaptureSequence() {
+        STATE.capturedPhotosData = [];
+        STATE.currentPhotoIndex = 0;
+        updateStepCounter();
+        resetCaptureState(false); // Chama resetCaptureState indicando que é o fim da sequência
+        console.log("Seq reset.");
+    }
+
+    // Mantém o mesmo (apenas atualiza o texto do contador)
+    function updateStepCounter() {
+        if (DOM.stepCounter) {
+            DOM.stepCounter.textContent = `${STATE.currentPhotoIndex + 1}/${STATE.requiredPhotoCount}`;
+        }
+    }
+
+    // Modificada para NÃO resetar estado no finally, apenas mostrar mensagem final
+    async function generateAndProcessMosaic(photosData) {
+        console.log(`Gerando x${photosData.length}...`);
+        // STATE.isGenerating já foi setado em captureAndDetect
+        const tC = document.createElement('canvas');
+        const tX = tC.getContext('2d');
+        const cR = DOM.captureCanvas;
+        // Simplificando checagem de erro inicial
+        if (!cR) {
+            showError("Erro Canvas Ref.");
+            if (DOM.generatingOverlay) DOM.generatingOverlay.classList.remove('visible');
+            return Promise.reject("Canvas de Referência não encontrado");
+        }
+        if (photosData.length === 0) {
+             console.warn("No photos");
+             if (DOM.generatingOverlay) DOM.generatingOverlay.classList.remove('visible');
+             return Promise.reject("Nenhuma foto para gerar mosaico");
+        }
+    
+        tC.width = cR.width; tC.height = cR.height; tX.fillStyle = '#EAEAEA'; tX.fillRect(0, 0, tC.width, tC.height);
+        const pC = photosData.length;
+
+        try {
+            console.time("Load Imgs");const iE=await Promise.all(photosData.map(p=>new Promise((s)=>{const g=new Image();g.onload=()=>s(g);g.onerror=()=>s(null);g.src=p.dataUrl;})));console.timeEnd("Load Imgs"); const vI=iE.filter(i=>i!==null);if(vI.length===0){throw new Error("Nenhuma imagem carregada.");}if(vI.length<pC){console.warn(`${vI.length}/${pC} loaded.`);} console.log("Montando grade...");const gC=CONFIG.MOSAIC_GRID_SIZE;const gR=CONFIG.MOSAIC_GRID_SIZE;const cW=tC.width/gC;const cH=tC.height/gR; for(let r=0;r<gR;r++){for(let c=0;c<gC;c++){const x=c*cW;const y=r*cH;const idx=Math.floor(Math.random()*vI.length);const sI=vI[idx];tX.drawImage(sI,x,y,cW,cH,x,y,cW,cH);}} console.log("Grade OK. FX...");console.time("FX");let fD=tX.getImageData(0,0,tC.width,tC.height);fD=applyNoise(fD,CONFIG.NOISE_INTENSITY);fD=applyRipple(fD,tC.width,tC.height,CONFIG.RIPPLE_AMPLITUDE,CONFIG.RIPPLE_FREQUENCY);tX.putImageData(fD,0,0);console.timeEnd("FX"); const fU=tC.toDataURL('image/jpeg',CONFIG.MOSAIC_JPEG_QUALITY);const id=`mosaic_${Date.now()}_x${pC}`;console.log(`Mosaic final: ${id}`); const nM={id:id,dataUrl:fU};STATE.allGeneratedMosaics.unshift(nM);saveMosaicsToStorage(); broadcastChannel.postMessage({type:'update_available'});updateForgetButtonState(); if(DOM.generatingOverlay)DOM.generatingOverlay.classList.remove('visible');
+
+            // Define o status de sucesso com autoClear
+            setStatus(`INTERPENETRARAM-SE`, true); // <--- Mensagem final temporária
+            
+
+        } catch (e) {
+            console.error("Mosaic Err:", e);
+            showError(`Falha ao gerar: ${e.message}`);
+            if (DOM.generatingOverlay) DOM.generatingOverlay.classList.remove('visible');
+            throw e; // Lança o erro para o .finally em captureAndDetect
+        } finally {
+             // Não altera STATE.isGenerating nem chama resetCaptureState aqui
+             console.log("generateAndProcessMosaic finished.");
+        }
+        return Promise.resolve(); // Retorna promessa resolvida
+    }
+    function resetCaptureState() { STATE.isCapturing=false;if(!STATE.isGenerating&&DOM.captureButton){DOM.captureButton.disabled=false;} }
+    function resetCaptureSequence() { STATE.capturedPhotosData=[];STATE.currentPhotoIndex=0;updateStepCounter();resetCaptureState();console.log("Seq reset."); }
+    function updateStepCounter() { if(DOM.stepCounter){DOM.stepCounter.textContent=`${STATE.currentPhotoIndex+1}/${STATE.requiredPhotoCount}`;} }
+    async function generateAndProcessMosaic(photosData) { console.log(`Gerando x${photosData.length}...`);STATE.isGenerating=true; const tC=document.createElement('canvas');const tX=tC.getContext('2d'); const cR=DOM.captureCanvas;if(!cR){showError("Erro Canvas Ref.");if(DOM.generatingOverlay)DOM.generatingOverlay.classList.remove('visible');STATE.isGenerating=false;resetCaptureState();return;} tC.width=cR.width;tC.height=cR.height;tX.fillStyle='#EAEAEA';tX.fillRect(0,0,tC.width,tC.height); const pC=photosData.length;if(pC===0){console.warn("No photos");if(DOM.generatingOverlay)DOM.generatingOverlay.classList.remove('visible');STATE.isGenerating=false;resetCaptureState();return;} try{console.time("Load Imgs");const iE=await Promise.all(photosData.map(p=>new Promise((s)=>{const g=new Image();g.onload=()=>s(g);g.onerror=()=>s(null);g.src=p.dataUrl;})));console.timeEnd("Load Imgs"); const vI=iE.filter(i=>i!==null);if(vI.length===0){throw new Error("Nenhuma imagem carregada.");}if(vI.length<pC){console.warn(`${vI.length}/${pC} loaded.`);} console.log("Montando grade...");const gC=CONFIG.MOSAIC_GRID_SIZE;const gR=CONFIG.MOSAIC_GRID_SIZE;const cW=tC.width/gC;const cH=tC.height/gR; for(let r=0;r<gR;r++){for(let c=0;c<gC;c++){const x=c*cW;const y=r*cH;const idx=Math.floor(Math.random()*vI.length);const sI=vI[idx];tX.drawImage(sI,x,y,cW,cH,x,y,cW,cH);}} console.log("Grade OK. FX...");console.time("FX");let fD=tX.getImageData(0,0,tC.width,tC.height);fD=applyNoise(fD,CONFIG.NOISE_INTENSITY);fD=applyRipple(fD,tC.width,tC.height,CONFIG.RIPPLE_AMPLITUDE,CONFIG.RIPPLE_FREQUENCY);tX.putImageData(fD,0,0);console.timeEnd("FX"); const fU=tC.toDataURL('image/jpeg',CONFIG.MOSAIC_JPEG_QUALITY);const id=`mosaic_${Date.now()}_x${pC}`;console.log(`Mosaic final: ${id}`); const nM={id:id,dataUrl:fU};STATE.allGeneratedMosaics.unshift(nM);saveMosaicsToStorage(); broadcastChannel.postMessage({type:'update_available'});updateForgetButtonState(); if(DOM.generatingOverlay)DOM.generatingOverlay.classList.remove('visible');setStatus(`INTERPENETRARAM-SE... PRÓXIMA CAPTURA...`, true);}catch(e){console.error("Mosaic Err:",e);showError(`Falha ao gerar: ${e.message}`);if(DOM.generatingOverlay)DOM.generatingOverlay.classList.remove('visible');}finally{STATE.isGenerating=false;resetCaptureState(); }  }
+    function isLowLight(imageData) { let l=0; const d=imageData.data; for(let i=0;i<d.length;i+=4)l+=(.21*d[i]+.71*d[i+1]+.07*d[i+2]); return(l/(d.length/4))<60; }
+    function adjustBrightness(imageData, amount) { const d=imageData.data; for(let i=0;i<d.length;i+=4){d[i]=Math.max(0,Math.min(255,d[i]+amount)); d[i+1]=Math.max(0,Math.min(255,d[i+1]+amount)); d[i+2]=Math.max(0,Math.min(255,d[i+2]+amount));} return imageData; }
+    function applyNoise(imageData, intensity) { const d=imageData.data; for(let i=0;i<d.length;i+=4){const n=(Math.random()-.5)*intensity*2; d[i]=Math.max(0,Math.min(255,d[i]+n)); d[i+1]=Math.max(0,Math.min(255,d[i+1]+n)); d[i+2]=Math.max(0,Math.min(255,d[i+2]+n));} return imageData; }
+    // --- Lógica UNIFICADA para Animação do Filtro Psicodélico (V12.2 FINAL) ---
+
+
+// --- Fim da Lógica Unificada ---
+    function isLowLight(imageData) {
+    let totalLuminance = 0;
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+        // Fórmula de luminância perceptual
+        const luminance = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+        totalLuminance += luminance;
+    }
+    const averageLuminance = totalLuminance / (data.length / 4);
+    // Define o limiar para considerar "baixa luz" (ajuste se necessário)
+    return averageLuminance < 0;
+}
+function isHighLight(imageData) {
+    let totalLuminance = 0;
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+        const luminance = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+        totalLuminance += luminance;
+    }
+    const averageLuminance = totalLuminance / (data.length / 4);
+    // Define o limiar para considerar "muita luz" (ex: acima de 190)
+    // Ajuste este valor (190) conforme necessário
+    return averageLuminance > 0;
+}
+
+function adjustContrast(imageData, factor) {
+    const data = imageData.data;
+    // Fator 1 = sem mudança, > 1 aumenta contraste, < 1 diminui
+    const factorValue = (factor && factor !== 1) ? factor : 1.0; // Garante que temos um fator válido
+
+    for (let i = 0; i < data.length; i += 4) {
+        // Aplica contraste: newValue = factor * (oldValue - 128) + 128
+        data[i]   = Math.max(0, Math.min(255, factorValue * (data[i]   - 128) + 128));
+        data[i+1] = Math.max(0, Math.min(255, factorValue * (data[i+1] - 128) + 128));
+        data[i+2] = Math.max(0, Math.min(255, factorValue * (data[i+2] - 128) + 128));
+    }
+    return imageData;
+}
+function adjustBrightness(imageData, amount) {
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+        data[i] = Math.max(0, Math.min(255, data[i] + amount));     // Red
+        data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + amount)); // Green
+        data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + amount)); // Blue
+        // data[i + 3] (Alpha) não é modificado
+    }
+    return imageData;
+}
+
+function applyHueRotate(imageData, angle) {
+    const data = imageData.data;
+    const angleRad = angle * (Math.PI / 180); // Converte ângulo para radianos
+    const cosA = Math.cos(angleRad);
+    const sinA = Math.sin(angleRad);
+    // Matriz de rotação de matiz (aproximada)
+    const matrix = [
+        0.213 + cosA*0.787 - sinA*0.213,  0.715 - cosA*0.715 - sinA*0.715,  0.072 - cosA*0.072 + sinA*0.928,
+        0.213 - cosA*0.213 + sinA*0.143,  0.715 + cosA*0.285 + sinA*0.140,  0.072 - cosA*0.072 - sinA*0.283,
+        0.213 - cosA*0.213 - sinA*0.787,  0.715 - cosA*0.715 + sinA*0.715,  0.072 + cosA*0.928 + sinA*0.072
+    ];
+    for (let i = 0; i < data.length; i += 4) {
+        const r = data[i]; const g = data[i+1]; const b = data[i+2];
+        const newR = matrix[0]*r + matrix[1]*g + matrix[2]*b;
+        const newG = matrix[3]*r + matrix[4]*g + matrix[5]*b;
+        const newB = matrix[6]*r + matrix[7]*g + matrix[8]*b;
+        data[i]   = Math.max(0, Math.min(255, newR));
+        data[i+1] = Math.max(0, Math.min(255, newG));
+        data[i+2] = Math.max(0, Math.min(255, newB));
+    }
+    return imageData;
+}
+    function applyRipple(imageData, width, height, amplitude, frequency) { const s=imageData.data; const t=new Uint8ClampedArray(s.length); for(let y=0;y<height;y++){for(let x=0;x<width;x++){const o=Math.sin(y*frequency)*amplitude; const sy=Math.round(y+o); const ti=(y*width+x)*4; if(sy>=0&&sy<height){const si=(sy*width+x)*4; t[ti]=s[si];t[ti+1]=s[si+1];t[ti+2]=s[si+2];t[ti+3]=s[si+3];}else{t[ti]=0;t[ti+1]=0;t[ti+2]=0;t[ti+3]=255;}}} return new ImageData(t,width,height); }
+    function toggleMemoryMenu() { if(!DOM.memoryMenu)return; const h=DOM.memoryMenu.classList.contains('hidden'); DOM.memoryMenu.classList.toggle('hidden'); if(h)populateMemoryMenu(); }
+    function populateMemoryMenu() { if(!DOM.memoryGrid)return; console.log("Populating mem..."); DOM.memoryGrid.innerHTML=''; if(STATE.allGeneratedMosaics.length===0){DOM.memoryGrid.innerHTML='<p>Memória vazia.</p>';return;} STATE.allGeneratedMosaics.forEach(m=>{const d=document.createElement('div'); d.className='memoryItem'; d.innerHTML=` <img src="${m.dataUrl}" loading="lazy" alt="Mosaico ${m.id.substring(7,17)}"> <div class="actions"> <button data-mosaic-id="${m.id}" class="view-button" aria-label="Ver ${m.id.substring(7,17)}"><img class="action-icon" src="images/icon_capturar_aberto.png" alt="Ver"></button> <a href="${m.dataUrl}" download="espelho_${m.id}.jpg" aria-label="Baixar ${m.id.substring(7,17)}"><img class="action-icon" src="images/icon_download.png" alt="DL"></a> </div>`; DOM.memoryGrid.appendChild(d); const b=d.querySelector('.view-button'); if(b)b.addEventListener('click',handleViewImageClick);}); console.log(`${STATE.allGeneratedMosaics.length} items added.`); }
+    function handleViewImageClick(event) { const id=event.currentTarget.dataset.mosaicId; const m=STATE.allGeneratedMosaics.find(i=>i.id===id); if(m)showImageViewer(m.dataUrl); else console.error("Mosaic not found:", id); }
+    function showImageViewer(imageUrl) { if(!DOM.imageViewer||!DOM.viewerImage)return; DOM.viewerImage.src=imageUrl; DOM.imageViewer.classList.remove('hidden'); }
+    function hideImageViewer() { if(!DOM.imageViewer||!DOM.viewerImage)return; DOM.imageViewer.classList.add('hidden'); DOM.viewerImage.src=""; }
+    
+    function loadConfigToUI() {
+    if (!DOM.configOptions || !DOM.customPhotoCountInput || !DOM.photoCountDisplay) return; // Valida DOM
+    const currentCfg = STATE.currentConfig; // Lê do estado atual
+    document.querySelectorAll('input[name="photoOption"]').forEach(radio => {
+        if (radio.value === "custom") {
+            radio.checked = currentCfg.isCustom;
+            DOM.customPhotoCountInput.value = currentCfg.count;
+            DOM.customPhotoCountInput.disabled = !currentCfg.isCustom;
+        } else {
+            radio.checked = (!currentCfg.isCustom && parseInt(radio.value) === currentCfg.count);
+        }
+    });
+    updatePhotoCountDisplay(currentCfg.count, currentCfg.isCustom); // Atualiza display
+    console.log("Config loaded into UI:", currentCfg);
+
+}
+    function toggleConfigMenu() { if(!DOM.configMenu)return; const h=DOM.configMenu.classList.contains('hidden'); DOM.configMenu.classList.toggle('hidden'); if(h)loadConfigToUI(); }
+    function saveAndApplyConfig() {
+    if (!DOM.configOptions || !DOM.customPhotoCountInput) return; // Valida DOM
+    let newCount = 2;
+    let newIsCustom = false;
+    const selectedOption = document.querySelector('input[name="photoOption"]:checked');
+    if (!selectedOption) return;
+
+    if (selectedOption.value === "custom") {
+        newCount = parseInt(DOM.customPhotoCountInput.value) || 1;
+        newCount = Math.max(1, Math.min(CONFIG.MAX_CUSTOM_PHOTOS, newCount));
+        newIsCustom = true;
+        DOM.customPhotoCountInput.value = newCount;
+    } else {
+        newCount = parseInt(selectedOption.value);
+    }
+
+    // --- Ler estado do Efeito Psicodélico ---
+    const psychedelicToggle = document.getElementById('effectPsychedelicToggle');
+    const effectIsActiveNow = psychedelicToggle ? psychedelicToggle.checked : false;
+    // -----------------------------------------
+
+    // Atualiza o estado GLOBAL de contagem (efeito será atualizado por checkAndApply...)
+    STATE.requiredPhotoCount = newCount;
+    STATE.currentConfig = { count: newCount, isCustom: newIsCustom }; // Guarda config principal
+    localStorage.setItem(key(CONFIG.CONFIG_KEY), JSON.stringify(STATE.currentConfig)); // Salva config principal
+
+    // Salva a config DO EFEITO separadamente
+    const effectConfigToSave = { psychedelic: effectIsActiveNow };
+    localStorage.setItem(key(CONFIG.EFFECT_CONFIG_KEY), JSON.stringify(effectConfigToSave));
+
+    console.log("Config saved:", STATE.currentConfig, "Effect Config:", effectConfigToSave);
+
+    // Atualiza UI e Lógica
+    updatePhotoCountDisplay(newCount, newIsCustom);
+    resetCaptureSequence(); // Reseta contagem para nova config
+    toggleConfigMenu(); // Fecha menu
+
+    // --- Aplica imediatamente o estado do efeito salvo ---
+    checkAndApplyUnifiedEffectState();
+    // ---------------------------------------------------
+
+    setStatus(` MOD ${newCount} - MODO PSICODÉLICO: ${STATE.isPsychedelicEffectActive ? 'LIGADO' : 'DESLIGADO'}`, true); // Atualiza Status
+}
+
+    function updatePhotoCountDisplay(count, isCustom) {
+    if (DOM.photoCountDisplay) { // Verifica se o elemento existe
+        DOM.photoCountDisplay.textContent = `Modo: ${isCustom ? 'Custom (' + count + ')' : count} foto(s)`;
+    }
+}
+    function handleConfigSelectionChange() { if(!DOM.customPhotoCountInput)return; const s=document.querySelector('input[name="photoOption"]:checked'); DOM.customPhotoCountInput.disabled=(s?.value !== "custom"); }
+    function key(baseKey) { return CONFIG.LOCALSTORAGE_PREFIX + baseKey; }
+    function loadMosaicsFromStorage() { try{const s=localStorage.getItem(key(CONFIG.ALL_MOSAICS_KEY));if(s){STATE.allGeneratedMosaics=JSON.parse(s);if(!Array.isArray(STATE.allGeneratedMosaics)){console.warn("Stored data not array, reset.");STATE.allGeneratedMosaics=[];}else{console.log(`Loaded ${STATE.allGeneratedMosaics.length} mosaics.`);}}else{STATE.allGeneratedMosaics=[];console.log("No stored mosaics.");}}catch(e){console.error("Err load:",e);STATE.allGeneratedMosaics=[];try{localStorage.removeItem(key(CONFIG.ALL_MOSAICS_KEY));}catch(r){}} }
+    function saveMosaicsToStorage() { try{const s=STATE.allGeneratedMosaics.slice(0,CONFIG.MAX_MEMORY_ITEMS);localStorage.setItem(key(CONFIG.ALL_MOSAICS_KEY),JSON.stringify(s));console.log(`Saved ${s.length} mosaics.`);STATE.allGeneratedMosaics=s;}catch(e){console.error("Err save:",e);if(e.name==='QuotaExceededError'&&STATE.allGeneratedMosaics.length>0){console.warn("Quota. Removing oldest.");STATE.allGeneratedMosaics.pop();saveMosaicsToStorage();}else{showError("Erro ao salvar memória.");}} }
+    function clearAllData() { if(STATE.allGeneratedMosaics.length===0)return; if(confirm("APAGAR TUDO ENTRE NÓS?????")){console.log("Clearing...");STATE.allGeneratedMosaics=[];STATE.lastProjectedIndex=-1;try{localStorage.removeItem(key(CONFIG.ALL_MOSAICS_KEY));setStatus("¡¡¡MEMORIA VACÍA!!!", true);}catch(e){console.error("Err rem LS:",e);showError("Erro limpar mem.");}if(DOM.memoryMenu&&!DOM.memoryMenu.classList.contains('hidden')){populateMemoryMenu();}broadcastChannel.postMessage({type:'clear_gallery'});updateForgetButtonState();} }
+    function updateForgetButtonState() { if(DOM.forgetButton){DOM.forgetButton.disabled=(STATE.allGeneratedMosaics.length===0);} }
+    function initializeProjectionModeUI() { console.log("[Proj] Init UI V10"); DOM.mainContainer.innerHTML=` <div class="content-area" id="projectionContentArea"> <div id="projection-image-container" role="img" aria-live="polite" aria-label="Área de projeção"> <img id="projectionImageA" alt="Proj A" src=""> <img id="projectionImageB" alt="Proj B" src=""> </div> </div>`; console.log("[Proj] UI HTML injected."); }
+    function handleBroadcastMessage(event) {
+    if (!STATE.isProjectionMode) return;
+    console.log("Proj msg:", event.data);
+    const message = event.data;
+
+    if (message?.type === 'update_available' || message?.type === 'clear_gallery') {
+         if(message.type === 'update_available') {
+            console.log("Proj: update received.");
+            loadMosaicsFromStorage();
+         } else {
+             console.log("Proj: clear received.");
+             stopProjectionLoop(); STATE.allGeneratedMosaics = []; STATE.lastProjectedIndex = -1;
+             if (DOM.projectionImageA) { /* ... limpar A ... */ }
+             if (DOM.projectionImageB) { /* ... limpar B ... */ }
+             if(DOM.projectionImageContainer) DOM.projectionImageContainer.setAttribute('aria-label','Memória limpa.');
+             console.log("Proj gallery cleared.");
+         }
+
+        // --- Verifica e aplica estado do efeito em AMBOS os casos ---
+        checkAndApplyUnifiedEffectState();
+        // ----------------------------------------------------------
+
+        if(message.type === 'update_available') { // Decide projeção só no update
+             decideProjectionState();
+        }
+    }
+}
+    function decideProjectionState() { if(!STATE.isProjectionMode)return; const c=STATE.allGeneratedMosaics.length; console.log(`Proj: Deciding (${c} mosaics).`); if(c===0){stopProjectionLoop();if(DOM.projectionImageA){DOM.projectionImageA.src='';DOM.projectionImageA.style.opacity='0';DOM.projectionImageA.alt='Aguardando...';} if(DOM.projectionImageB){DOM.projectionImageB.src='';DOM.projectionImageB.style.opacity='0';} if(DOM.projectionImageContainer)DOM.projectionImageContainer.setAttribute('aria-label','Aguardando...'); console.log("Proj State: WAITING");}else if(c===1){stopProjectionLoop();displaySingleStaticMosaic(STATE.allGeneratedMosaics[0]);console.log("Proj State: STATIC");}else{if(!STATE.projectionIntervalId){startRandomProjectionLoop();console.log("Proj State: LOOPING (Started)");}else{console.log("Proj State: LOOPING (Running)");}} }
+    function displaySingleStaticMosaic(mosaic) { if(!STATE.isProjectionMode||!mosaic||!DOM.projectionImageA||!DOM.projectionImageB)return; console.log(`Proj: Static: ${mosaic.id}`);STATE.lastProjectedIndex=0; DOM.projectionImageB.style.opacity='0';DOM.projectionImageB.src=''; DOM.projectionImageA.style.transition='none';DOM.projectionImageA.src=mosaic.dataUrl;DOM.projectionImageA.alt=`Estático: ${mosaic.id}`; DOM.projectionImageA.style.opacity='1';DOM.projectionImageA.style.zIndex='1';DOM.projectionImageB.style.zIndex='0'; STATE.activeProjectionSlot='A';if(DOM.projectionImageContainer)DOM.projectionImageContainer.setAttribute('aria-label',`Exibindo ${mosaic.id}`); }
+    function startRandomProjectionLoop() { if(!STATE.isProjectionMode||STATE.allGeneratedMosaics.length<2){console.log("Proj loop cannot start.");decideProjectionState();return;} console.log("Proj: Starting loop...");stopProjectionLoop(); const showNext=()=>{const cc=STATE.allGeneratedMosaics.length;if(cc<2){console.log("Proj Loop: Stopping (< 2)");decideProjectionState();return;} let ni;do{ni=Math.floor(Math.random()*cc);}while(cc>1&&ni===STATE.lastProjectedIndex); STATE.lastProjectedIndex=ni;const nm=STATE.allGeneratedMosaics[ni]; if(!nm){console.error(`Proj Loop: No mosaic at ${ni}. Stopping.`);stopProjectionLoop();return;} console.log(`Proj Loop: Next ${ni}, ID: ${nm.id}. Active: ${STATE.activeProjectionSlot}.`); const slot=(STATE.activeProjectionSlot==='A')?DOM.projectionImageB:DOM.projectionImageA; const other=(STATE.activeProjectionSlot==='A')?DOM.projectionImageA:DOM.projectionImageB; loadAndFadeInImage(slot,nm,()=>{if(other){other.style.opacity='0';} STATE.activeProjectionSlot=(STATE.activeProjectionSlot==='A'?'B':'A'); console.log(`Proj Loop: Fade complete. New active: ${STATE.activeProjectionSlot}`); if(DOM.projectionImageContainer)DOM.projectionImageContainer.setAttribute('aria-label',`Exibindo ${nm.id}`);});}; showNext(); STATE.projectionIntervalId=setInterval(showNext,CONFIG.PROJECTION_DISPLAY_TIME+CONFIG.PROJECTION_FADE_TIME); console.log(`Proj Loop: Interval ${STATE.projectionIntervalId}. Dur: ${CONFIG.PROJECTION_DISPLAY_TIME+CONFIG.PROJECTION_FADE_TIME}ms`); }
+    function loadAndFadeInImage(imageElement, mosaic, callback = null) { if(!STATE.isProjectionMode||!imageElement||!DOM.projectionImageA||!DOM.projectionImageB||!mosaic?.dataUrl){console.error("Proj Fade: Missing.",{imageElement,mosaic});if(callback){try{callback();}catch(e){}}return;} console.log(`Proj Fade: Loading ${mosaic.id} into ${imageElement.id}`); const zFront='2';const zBack='1'; const other=(imageElement===DOM.projectionImageA)?DOM.projectionImageB:DOM.projectionImageA; imageElement.style.zIndex=zFront;if(other)other.style.zIndex=zBack; imageElement.style.transition='none';imageElement.style.opacity='0'; const onLoad=()=>{console.log(`Proj Fade: Loaded ${mosaic.id}. Fading in.`);void imageElement.offsetHeight; imageElement.style.transition=`opacity ${CONFIG.PROJECTION_FADE_TIME/1000}s ease-in-out`;imageElement.style.opacity='1'; if(callback){try{callback();}catch(e){console.error("Fade CB Err:",e);}} cleanup();}; const onError=()=>{console.error(`Proj Fade: Fail load ${mosaic.id}`);cleanup();if(callback){try{callback();}catch(e){}}}; const cleanup=()=>{imageElement.removeEventListener('load',onLoad);imageElement.removeEventListener('error',onError);}; imageElement.addEventListener('load',onLoad);imageElement.addEventListener('error',onError); imageElement.src=mosaic.dataUrl;imageElement.alt=`Mosaico ${mosaic.id.substring(7,17)}`; }
+    function stopProjectionLoop() { if(STATE.projectionIntervalId){clearInterval(STATE.projectionIntervalId);STATE.projectionIntervalId=null;console.log("Proj: Loop stopped.");} }
+    function openProjectionWindow() { const u=new URL(window.location.href);u.searchParams.set('projection','true'); window.open(u.toString(),'_blank'); setStatus("RÉFLEXION SINISTRE...", true); }
+    function setStatus(message, autoClear = false) { if (!DOM.statusMessage) return; console.info("Status:", message); DOM.statusMessage.textContent = message; DOM.statusMessage.classList.remove('hidden'); if (DOM.errorMessage) DOM.errorMessage.classList.add('hidden'); if (DOM.statusMessage.clearTimeoutId) { clearTimeout(DOM.statusMessage.clearTimeoutId); DOM.statusMessage.clearTimeoutId = null; } if (autoClear && !STATE.isCapturing && !STATE.isGenerating) { DOM.statusMessage.clearTimeoutId = setTimeout(clearStatus, 3000); } }
+    function showError(message) { if (!DOM.errorMessage) return; console.error("Error Msg:", message); DOM.errorMessage.textContent = message; DOM.errorMessage.classList.remove('hidden'); if (DOM.statusMessage) { DOM.statusMessage.classList.add('hidden'); if (DOM.statusMessage.clearTimeoutId) { clearTimeout(DOM.statusMessage.clearTimeoutId); DOM.statusMessage.clearTimeoutId = null; } } }
+    function clearStatus() { if(DOM.statusMessage){DOM.statusMessage.classList.add('hidden');DOM.statusMessage.clearTimeoutId=null;} }
+    function handleResize() { console.log("Window resized"); }
+   
+let animationFrameId = null;  
+let psychedelicAnimationFrameId = null;        
+
+
+// Função principal que roda a cada quadro
+function animatePsychedelicFilter() {
+    // Para o loop se o efeito foi desativado OU não estamos no contexto certo
+    if (!STATE.isPsychedelicEffectActive || !DOM || typeof cancelAnimationFrame !== 'function') {
+        psychedelicAnimationFrameId = null; // Garante que ID seja nulo se parou
+        return;
+    }
+
+    // Cálculo suave da rotação de matiz
+    const hueAngle = (Date.now() / 60) % 360; // Velocidade da rotação (menor = mais rápido)
+    const filterValue = `hue-rotate(${hueAngle}deg) saturate(1.2)`; // Rotação + leve saturação extra
+
+    try {
+        // Elementos a serem afetados (buscando dentro da função por segurança)
+        const body = document.body; // Aplica no fundo se for projeção
+        const projA = DOM.projectionImageA;
+        const projB = DOM.projectionImageB;
+        const moldura = DOM.mirrorFrame;
+        const texto = DOM.circularTextContainer;
+        // Seleciona TODOS os ícones relevantes DE UMA VEZ (mais eficiente)
+        const icons = document.querySelectorAll('.side-button img, #captureButtonImg, .action-icon, #configButton img, #projectionButton img');
+
+
+        if (STATE.isProjectionMode) {
+            // MODO PROJEÇÃO: Fundo + Imagens Ativas + Texto Circular
+            if (body) body.style.filter = filterValue;
+            if (projA && projA.style.opacity === '1') projA.style.filter = filterValue; else if (projA) projA.style.filter = 'none'; // Limpa inativa
+            if (projB && projB.style.opacity === '1') projB.style.filter = filterValue; else if (projB) projB.style.filter = 'none'; // Limpa inativa
+            if (texto) texto.style.filter = filterValue; // Texto circular também
+
+            // Garante limpar filtros de elementos da captura
+            if (moldura) moldura.style.filter = 'none';
+            icons.forEach(icon => { if(icon) icon.style.filter = 'none'; });
+
+        } else { // MODO CAPTURA: Moldura + Texto + Ícones
+            if (moldura) moldura.style.filter = filterValue;
+            if (texto) texto.style.filter = filterValue;
+            icons.forEach(icon => { if(icon) icon.style.filter = filterValue; });
+
+            // Garante limpar filtros de elementos da projeção
+            if (body) body.style.filter = 'none';
+            if (projA) projA.style.filter = 'none';
+            if (projB) projB.style.filter = 'none';
+        }
+    } catch (e) {
+        console.error("Erro ao aplicar filtro psico:", e);
+        stopPsychedelicAnimation(); // Para a animação em caso de erro
+        return; // Sai da função
+    }
+
+    // Agenda o próximo quadro SOMENTE se o efeito AINDA estiver ativo
+    if (STATE.isPsychedelicEffectActive) {
+         psychedelicAnimationFrameId = requestAnimationFrame(animatePsychedelicFilter);
+    } else {
+        psychedelicAnimationFrameId = null; // Limpa ID se foi desativado
+    }
+}
+
+// Inicia a animação do filtro (se não estiver rodando)
+function startPsychedelicAnimation() {
+    if (STATE.isPsychedelicEffectActive && psychedelicAnimationFrameId === null) {
+        console.log("Starting Psycho Filter");
+        animatePsychedelicFilter(); // Inicia o loop
+    } else {
+         // console.log("Start Psycho Filter Skipped/Running"); // Log opcional
+    }
+}
+
+// Para a animação do filtro e remove o filtro de TODOS os elementos
+function stopPsychedelicAnimation() {
+    if (psychedelicAnimationFrameId !== null) {
+        console.log("Stopping Psycho Filter");
+        cancelAnimationFrame(psychedelicAnimationFrameId);
+        psychedelicAnimationFrameId = null;
+    }
+    // Remove filtro de todos os elementos potenciais (robusto)
+    try {
+        const elementsToClear = [ DOM.bodyElement, DOM.projectionImageA, DOM.projectionImageB, DOM.mirrorFrame, DOM.circularTextContainer, ...document.querySelectorAll('.side-button img, #captureButtonImg, .action-icon, #configButton img, #projectionButton img')];
+        elementsToClear.forEach(el => { if(el) el.style.filter = 'none'; });
+    } catch(e) { console.error("Erro ao remover filtros:", e); }
+}
+
+// Verifica a config salva e ajusta animação (ao carregar página ou salvar config)
+function checkAndApplyUnifiedEffectState() {
+    try {
+        const savedConfig = JSON.parse(localStorage.getItem(key(CONFIG.EFFECT_CONFIG_KEY)) || '{"psychedelic":false}');
+        STATE.isPsychedelicEffectActive = savedConfig.psychedelic; // Atualiza estado global
+
+        console.log(`Checked effect state: ${STATE.isPsychedelicEffectActive}`);
+
+        if (STATE.isPsychedelicEffectActive) {
+            startPsychedelicAnimation();
+        } else {
+            stopPsychedelicAnimation();
+        }
+         // Atualiza o checkbox na UI se ele existir (para refletir o estado carregado)
+         const psychedelicToggle = document.getElementById('effectPsychedelicToggle');
+         if (psychedelicToggle) {
+             psychedelicToggle.checked = STATE.isPsychedelicEffectActive;
+         }
+
+    } catch (e) { console.error("Erro read/apply effect state:", e); STATE.isPsychedelicEffectActive=false; stopPsychedelicAnimation();}
+}
+
+
+
+    </script>
+</body>
+</html>

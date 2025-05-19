@@ -1,0 +1,13 @@
+# System files
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# IDE / Editor specific
+.vscode/
+
+# Executables - NUNCA ADICIONAR INSTALADORES
+*.exe
+*.msi
+*.dmg
+*.pkg
