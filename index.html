@@ -5,6 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>portifas nicholinh4s</title>
     <style>
+
+@font-face {
+            font-family: 'Arial Narrow Web'; /* Nome para usar no CSS */
+            src: url('fonts/ArialNarrowBoldItalic.woff2') format('woff2');
+                 /* Adicione outros formatos se tiver, ex:
+                 url('fonts/ArialNarrowBoldItalic.ttf') format('truetype'); */
+            font-weight: bold;
+            font-style: italic;
+            font-display: swap; /* Importante para performance de carregamento */
+        }
+
+        @font-face {
+            font-family: 'Vatican Rough Letters, 8th c. Regular'; /* Mantenha o nome exato que você já usa */
+            src: url('fonts/VaticanRoughLetters.woff2') format('woff2');
+                 /* Adicione outros formatos se tiver, ex:
+                 url('fonts/VaticanRoughLetters.ttf') format('truetype'); */
+            font-weight: normal; /* Ou o peso apropriado da sua fonte */
+            font-style: normal;  /* Ou o estilo apropriado da sua fonte */
+            font-display: swap; /* Importante para performance de carregamento */
+        }
         /* --- Global Styles --- */
         * {
             margin: 0;
@@ -22,7 +42,7 @@
 
         /* --- Typography --- */
         .font-nav {
-            font-family: 'Arial Narrow Bold Italic', 'Arial Narrow', Arial, sans-serif;
+            font-family: 'Arial Narrow Web', 'Arial Narrow Bold Italic', 'Arial Narrow', Arial, sans-serif;
             font-weight: bold;
             font-style: italic;
         }
@@ -216,7 +236,7 @@
             margin-bottom: 0;
             font-size: 1.2em;
             color: var(--text-main);
-            font-family: 'Arial Narrow Bold Italic', 'Arial Narrow', Arial, sans-serif;
+            font-family: 'Arial Narrow Web', 'Arial Narrow Bold Italic', 'Arial Narrow', Arial, sans-serif;
             font-weight: bold;
             font-style: italic;
         }
