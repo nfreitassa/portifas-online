@@ -6,12 +6,38 @@
     <title>Espelho Estranho</title>
     <script defer src="face-api.min.js"></script>
     <style>
+         @font-face {
+            font-family: 'Vatican Rough Letters, 8th c. Regular'; /* Mantenha o nome exato */
+            src: url('fonts/VaticanRoughLetters.woff2') format('woff2'); /* << SUBSTITUA PELO NOME REAL DO ARQUIVO */
+                 /* Ex: url('fonts/VaticanRoughLetters.ttf') format('truetype'); */
+            font-weight: normal; /* Ajuste se necessário */
+            font-style: normal;  /* Ajuste se necessário */
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: 'AlphaSmoke Web'; /* Novo nome para evitar conflitos, ou mantenha 'AlphaSmoke' se preferir */
+            src: url('fonts/AlphaSmoke.woff2') format('woff2'); /* << SUBSTITUA PELO NOME REAL DO ARQUIVO */
+                 /* Ex: url('fonts/AlphaSmoke.ttf') format('truetype'); */
+            font-weight: normal; /* Ajuste se necessário */
+            font-style: normal;  /* Ajuste se necessário */
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: 'Aclonica Web'; /* Novo nome para evitar conflitos, ou mantenha 'Aclonica' se preferir */
+            src: url('fonts/Aclonica.woff2') format('woff2'); /* << SUBSTITUA PELO NOME REAL DO ARQUIVO */
+                 /* Ex: url('fonts/Aclonica.ttf') format('truetype'); */
+            font-weight: normal; /* Ajuste se necessário */
+            font-style: normal;  /* Ajuste se necessário */
+            font-display: swap;
+        }
         /* --- Estilos CSS - Revisado V10 (Jitter Suave + Botão Acima + Animação Moldura) --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { height: 100%; overflow: hidden; }
 
         body {
-            font-family: 'Vatican Rough Letters, 8th c. Regular', 'AlphaSmoke', 'Aclonica', Impact, sans-serif;
+            font-family: 'Vatican Rough Letters, 8th c. Regular', 'AlphaSmoke Web', 'Aclonica Web', Impact, sans-serif;
             background-color: #EAEAEA; color: #000;
             display: flex; justify-content: center; align-items: center; text-align: center;
             position: relative;
@@ -43,8 +69,8 @@
         }
        #circularTextSvg { width: 100%; height: 100%; overflow: visible; }
         #circularTextSvg text {
-            font-family: inherit;
-            font-size: clamp(2em, 5vw, 8em); /* Mantenha ou ajuste o tamanho base */
+            font-family: inherit; /* Mantém, pois o body já foi atualizado */
+            font-size: clamp(2em, 5vw, 8em);
             fill: #B412FF;
             text-transform: uppercase;
             transform-origin: center center; /* Essencial para girar no centro */
@@ -112,7 +138,15 @@
         #flashOverlay.flash { opacity: 0.4; }
 
         /* Mensagens (OK no Topo) */
-        #statusMessage, #errorMessage { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; margin: 0 auto; padding: 6px 10px; border-radius: 4px; font-weight: bold; font-family: Arial, sans-serif; font-size: clamp(0.7em, 1.3vw, 0.8em); z-index: 101; text-shadow: 1px 1px 1px rgba(255,255,255,0.7); text-align: center; }
+        #statusMessage, #errorMessage {
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 450px; margin: 0 auto; padding: 6px 10px;
+            border-radius: 4px; font-weight: bold;
+            /* MODIFICAÇÃO AQUI: Se quiser que as mensagens usem uma fonte padrão e não as artísticas */
+            font-family: Arial, sans-serif; /* Mantém Arial para legibilidade, a menos que queira as fontes artísticas aqui também */
+            font-size: clamp(0.7em, 1.3vw, 0.8em); z-index: 101;
+            text-shadow: 1px 1px 1px rgba(255,255,255,0.7); text-align: center;
+        }
         .message.hidden{display:none;}
         .error-message{color:#c0392b;background-color:#f9d5d2;border:1px solid #e74c3c;}
         .info-message{color:#B412FF;background-color:rgba(200,150,255,.2);border:1px solid rgba(180,18,255,.5);}
@@ -123,7 +157,10 @@
 
         /* --- Footer (Apenas modo captura) --- */
         .footer-area { position: fixed; bottom: 0; left: 0; width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 5px 15px; background: none; z-index: 50; pointer-events: none; height: 30px; }
-        #credits { font-size:clamp(.6em,1.5vw,.75em); color:rgba(180,18,255,.8); text-align:left; font-family:Arial,sans-serif; flex-grow:1; margin-right:10px; text-shadow:1px 1px 1px rgba(0,0,0,.2); pointer-events:auto; }
+        #credits { font-size:clamp(.6em,1.5vw,.75em); color:rgba(180,18,255,.8); text-align:left; font-family:Arial,sans-serif; /* Mantém Arial para legibilidade */
+            flex-grow:1; margin-right:10px;
+            text-shadow:1px 1px 1px rgba(0,0,0,.2); pointer-events:auto;
+        }
         #footerButtons { display: flex; gap: 10px; align-items: center; pointer-events: auto; }
         #configButton, #projectionButton { pointer-events:auto; display:block; border:none; background:none; padding:0; cursor:pointer; width:clamp(32px,5.5vw,45px); height:auto; transition:transform .2s, filter .2s; filter:drop-shadow(1px 1px 1px rgba(0,0,0,.3)); }
         #configButton img, #projectionButton img { display: block; width: 100%; height: auto; }
@@ -133,8 +170,12 @@
         .overlay-menu { position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(80,80,80,.9); color:#EAEAEA; z-index:400; /* Z-index alto para menus */ display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; opacity:0; visibility:hidden; transition:opacity .3s ease, visibility .3s ease; }
         .overlay-menu:not(.hidden){opacity:1;visibility:visible}
         .menu-content { background-color: rgba(234,234,234,0.95); color: #222; padding: 25px; border-radius: 8px; max-width: 90%; width: 500px; max-height: 85%; overflow-y: auto; position: relative; box-shadow: 0 5px 20px rgba(0,0,0,0.4); font-family: Arial, sans-serif; backdrop-filter: blur(5px); }
-        .menu-title { font-size:clamp(1.4em, 4vw, 1.8em); color:#B412FF; margin-bottom:20px; font-family:'Aclonica', Impact, sans-serif; text-transform:uppercase; text-align:center; }
-        .close-menu-button { position:absolute; top:8px; right:10px; background:0 0; border:none; font-size:1.8em; color:#888; cursor:pointer; padding:5px; line-height:1; font-family:Arial,sans-serif; font-weight:700; }
+        .menu-title { font-size:clamp(1.4em, 4vw, 1.8em); color:#B412FF; margin-bottom:20px; font-family:'Aclonica Web', 'Aclonica', Impact, sans-serif;
+            text-transform:uppercase; text-align:center;
+        }
+        .close-menu-button { position:absolute; top:8px; right:10px; background:0 0; border:none; font-size:1.8em; color:#888; cursor:pointer; padding:5px; line-height:1; font-family:Arial,sans-serif;
+            font-weight:700;
+        }
         .close-menu-button:hover { color: #B412FF; }
 
         /* --- Grade da Memória (OK) --- */
